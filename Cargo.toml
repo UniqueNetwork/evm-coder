@@ -12,7 +12,6 @@ evm-coder-procedural = { path = "./procedural" }
 primitive-types = { version = "0.12.1", default-features = false }
 # Evm doesn't have reexports for log and others
 ethereum = { version = "0.14.0", default-features = false }
-sp-std = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
 # Error types for execution
 evm-core = { default-features = false, git = "https://github.com/uniquenetwork/evm", branch = "unique-polkadot-v0.9.36" }
