@@ -35,7 +35,8 @@ use crate::{
 	types::*,
 };
 
-const ABI_ALIGNMENT: usize = 32;
+/// Aligment for every simple type in bytes.
+pub const ABI_ALIGNMENT: usize = 32;
 
 /// View into RLP data, which provides method to read typed items from it
 #[derive(Clone)]

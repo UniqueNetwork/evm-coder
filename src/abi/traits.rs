@@ -18,7 +18,7 @@ pub trait AbiType {
 	/// Is type dynamic sized.
 	fn is_dynamic() -> bool;
 
-	/// Size for type aligned to [`ABI_ALIGNMENT`].
+	/// Size for type aligned to [`ABI_ALIGNMENT`](crate::abi::ABI_ALIGNMENT).
 	fn size() -> usize;
 }
 
