@@ -93,6 +93,46 @@ pub use evm_coder_procedural::solidity_interface;
 pub use evm_coder_procedural::solidity;
 /// See [`solidity_interface`]
 pub use evm_coder_procedural::weight;
+
+/// Macro to include support for structures and enums in Solidity.
+///
+/// ### Overview
+/// This macro is used to include support for structures and enums in Solidity.
+/// This allows them to encode and decode in \ from the Solidity Abi format, as well as create their views into Solidity lang.
+///
+/// ### Implemented trais
+/// - [`AbiType`](abi::AbiType)
+/// - [`AbiRead`](abi::AbiRead)
+/// - [`AbiWrite`](abi::AbiWrite)
+/// - [`CanBePlacedInVec`](sealed::CanBePlacedInVec)
+/// - [`SolidityTypeName`](solidity::SolidityTypeName)
+/// - [`SolidityStructTy`](solidity::SolidityStructTy) - for struct
+/// - [`SolidityEnumTy`](solidity::SolidityEnumTy) - for enum
+///
+/// ### Limitations
+/// - All struct fields must implement traits listed above.
+/// - Enum must have u8 layout.
+/// - Enum must implement folowing traits: Default, Copy, Clone
+///
+/// ### Example
+/// ```
+/// use evm_coder::AbiCoder;
+///
+/// #[derive(AbiCoder)]
+/// struct Foo {
+/// 	a: u8,
+/// 	b: String
+/// }
+///
+/// #[derive(AbiCoder, Default, Clone, Copy)]
+///	#[repr(u8)]
+///	enum Color {
+///		Red,
+///		Green,
+///		#[default]
+///		Blue,
+///	}
+/// ```
 pub use evm_coder_procedural::AbiCoder;
 pub use sha3_const;
 

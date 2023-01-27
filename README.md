@@ -11,5 +11,6 @@ Most of this library functionality shouldn't be used directly, but via macros
 
 - [`solidity_interface`]
 - [`ToLog`]
+- [`AbiCoder`]
 
 <!-- TODO: make links useable on github, by publishing crate to docs.rs, and linking it from here instead -->
