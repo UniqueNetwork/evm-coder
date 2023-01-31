@@ -73,11 +73,6 @@ impl Impls {
 		unreachable!()
 	}
 
-	#[weight(*_weight)]
-	fn with_weight(&self, _weight: u64) -> Result<()> {
-		unreachable!()
-	}
-
 	/// Doccoment example
 	fn with_doc(&self) -> Result<()> {
 		unreachable!()

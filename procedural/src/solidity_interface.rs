@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
-#![allow(dead_code)]
-
 // NOTE: In order to understand this Rust macro better, first read this chapter
 // about Procedural Macros in Rust book:
 // https://doc.rust-lang.org/reference/procedural-macros.html
@@ -40,7 +38,6 @@ use crate::{
 struct Is {
 	name: Ident,
 	pascal_call_name: Ident,
-	snake_call_name: Ident,
 	via: Option<(Type, Ident)>,
 	condition: Option<Expr>,
 }
@@ -72,13 +69,6 @@ impl Is {
 		});
 		quote! {
 			#condition <#pascal_call_name #generics>::supports_interface(this, interface_id)
-		}
-	}
-
-	fn expand_variant_weight(&self) -> proc_macro2::TokenStream {
-		let name = &self.name;
-		quote! {
-			Self::#name(call) => call.weight()
 		}
 	}
 
@@ -198,7 +188,6 @@ impl Parse for IsList {
 			};
 			out.push(Is {
 				pascal_call_name: pascal_ident_to_call(&name),
-				snake_call_name: pascal_ident_to_snake_call(&name),
 				name,
 				via,
 				condition,
@@ -489,8 +478,7 @@ struct Method {
 	has_normal_args: bool,
 	has_value_args: bool,
 	mutability: Mutability,
-	result: Type,
-	weight: Option<Expr>,
+	result: Box<Type>,
 	docs: Vec<String>,
 	enum_attrs: Vec<TokenStream>,
 }
@@ -518,8 +506,6 @@ impl Method {
 					_ => unreachable!(),
 				};
 				docs.push(value);
-			} else if ident == "weight" {
-				weight = Some(attr.parse_args::<Expr>()?);
 			}
 		}
 		for i in to_remove.iter().rev() {
@@ -924,13 +910,6 @@ impl SolidityInterface {
 			.iter()
 			.chain(self.info.is.0.iter())
 			.map(|c| Is::expand_variant_call(c, &call_name, &gen_ref));
-		let weight_variants = self
-			.info
-			.inline_is
-			.0
-			.iter()
-			.chain(self.info.is.0.iter())
-			.map(Is::expand_variant_weight);
 
 		let inline_interface_id = self.info.inline_is.0.iter().map(Is::expand_interface_id);
 		let supports_interface = self
@@ -1078,23 +1057,6 @@ impl SolidityInterface {
 							|| #supports_interface
 						)*
 					)
-				}
-			}
-			impl #generics ::evm_coder::Weighted for #call_name #gen_ref
-			#gen_where
-			{
-				#[allow(unused_variables)]
-				fn weight(&self) -> ::evm_coder::execution::DispatchInfo {
-					match self {
-						#(
-							#weight_variants,
-						)*
-						// It should be very cheap, but not free
-						Self::ERC165Call(::evm_coder::ERC165Call::SupportsInterface {..}, _) => ::frame_support::weights::Weight::from_ref_time(100).into(),
-						#(
-							#weight_variants_this,
-						)*
-					}
 				}
 			}
 			impl #generics ::evm_coder::Callable<#call_name #gen_ref> for #name
