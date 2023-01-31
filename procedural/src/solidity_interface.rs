@@ -478,17 +478,19 @@ struct Method {
 	docs: Vec<String>,
 }
 impl Method {
-	fn try_from(value: &ImplItemMethod) -> syn::Result<Self> {
+	fn try_from(value: &mut ImplItemMethod) -> syn::Result<Self> {
 		let mut info = MethodInfo {
 			rename_selector: None,
 			hide: false,
 		};
 		let mut docs = Vec::new();
-		let mut weight = None;
-		for attr in &value.attrs {
+
+		let mut to_remove = Vec::new();
+		for (i, attr) in value.attrs.iter().enumerate() {
 			let ident = parse_ident_from_path(&attr.path, false)?;
 			if ident == "solidity" {
 				info = attr.parse_args::<MethodInfo>()?;
+				to_remove.push(i);
 			} else if ident == "doc" {
 				let args = attr.parse_meta().unwrap();
 				let value = match args {
@@ -502,6 +504,10 @@ impl Method {
 				weight = Some(attr.parse_args::<Expr>()?);
 			}
 		}
+		for i in to_remove.iter().rev() {
+			value.attrs.remove(*i);
+		}
+
 		let ident = &value.sig.ident;
 		let ident_str = ident.to_string();
 		if !cases::snakecase::is_snake_case(&ident_str) {
@@ -835,10 +841,10 @@ pub struct SolidityInterface {
 	docs: Vec<String>,
 }
 impl SolidityInterface {
-	pub fn try_from(info: InterfaceInfo, value: &ItemImpl) -> syn::Result<Self> {
+	pub fn try_from(info: InterfaceInfo, value: &mut ItemImpl) -> syn::Result<Self> {
 		let mut methods = Vec::new();
 
-		for item in &value.items {
+		for item in &mut value.items {
 			if let ImplItem::Method(method) = item {
 				methods.push(Method::try_from(method)?)
 			}

@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
-#![allow(dead_code)]
-
 use inflector::cases;
 use proc_macro::TokenStream;
 use quote::quote;
@@ -205,12 +203,12 @@ fn pascal_ident_to_snake_call(ident: &Ident) -> Ident {
 pub fn solidity_interface(args: TokenStream, stream: TokenStream) -> TokenStream {
 	let args = parse_macro_input!(args as solidity_interface::InterfaceInfo);
 
-	let input: ItemImpl = match syn::parse(stream) {
+	let mut input: ItemImpl = match syn::parse(stream) {
 		Ok(t) => t,
 		Err(e) => return e.to_compile_error().into(),
 	};
 
-	let expanded = match solidity_interface::SolidityInterface::try_from(args, &input) {
+	let expanded = match solidity_interface::SolidityInterface::try_from(args, &mut input) {
 		Ok(v) => v.expand(),
 		Err(e) => e.to_compile_error(),
 	};
@@ -221,15 +219,6 @@ pub fn solidity_interface(args: TokenStream, stream: TokenStream) -> TokenStream
 		#expanded
 	})
 	.into()
-}
-
-#[proc_macro_attribute]
-pub fn solidity(_args: TokenStream, stream: TokenStream) -> TokenStream {
-	stream
-}
-#[proc_macro_attribute]
-pub fn weight(_args: TokenStream, stream: TokenStream) -> TokenStream {
-	stream
 }
 
 /// See documentation for this proc-macro reexported in `evm-coder` crate
