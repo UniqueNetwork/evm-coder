@@ -1019,7 +1019,7 @@ impl SolidityInterface {
 				}
 			}
 			impl #gen_ref ::evm_coder::Call for #call_name #gen_ref {
-				fn parse(method_id: ::evm_coder::types::Bytes4, reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::execution::Result<Option<Self>> {
+				fn parse(method_id: ::evm_coder::types::Bytes4, reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Option<Self>> {
 					use ::evm_coder::abi::AbiRead;
 					match method_id {
 						::evm_coder::ERC165Call::INTERFACE_ID => return Ok(

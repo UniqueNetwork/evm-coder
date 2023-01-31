@@ -25,8 +25,6 @@ use abi::{AbiRead, AbiReader, AbiWriter};
 pub use evm_coder_procedural::{event_topic, fn_selector};
 pub mod abi;
 pub use events::{ToLog, ToTopic};
-use execution::DispatchInfo;
-pub mod execution;
 #[macro_use]
 pub mod custom_signature;
 
@@ -234,7 +232,7 @@ pub mod types {
 /// Parseable EVM call, this trait should be implemented with [`solidity_interface`] macro
 pub trait Call: Sized {
 	/// Parse call buffer into typed call enum
-	fn parse(selector: types::Bytes4, input: &mut AbiReader) -> execution::Result<Option<Self>>;
+	fn parse(selector: types::Bytes4, input: &mut AbiReader) -> abi::Result<Option<Self>>;
 }
 
 /// Intended to be used as `#[weight]` output type
@@ -280,7 +278,7 @@ impl ERC165Call {
 }
 
 impl Call for ERC165Call {
-	fn parse(selector: types::Bytes4, input: &mut AbiReader) -> execution::Result<Option<Self>> {
+	fn parse(selector: types::Bytes4, input: &mut AbiReader) -> abi::Result<Option<Self>> {
 		if selector != Self::INTERFACE_ID {
 			return Ok(None);
 		}

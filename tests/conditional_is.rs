@@ -1,4 +1,5 @@
-use evm_coder::{types::*, solidity_interface, execution::Result};
+
+type Result<T> = core::result::Result<T, String>;
 
 pub struct Contract(bool);
 

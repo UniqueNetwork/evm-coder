@@ -17,6 +17,8 @@
 use evm_coder::{abi::AbiType, execution::Result, generate_stubgen, solidity_interface, types::*};
 use primitive_types::U256;
 
+type Result<T> = core::result::Result<T, String>;
+
 pub struct ERC20;
 
 #[solidity_interface(name = ERC20)]

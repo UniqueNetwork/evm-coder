@@ -21,6 +21,8 @@ use evm_coder::{
 };
 use primitive_types::U256;
 
+type Result<T> = core::result::Result<T, String>;
+
 pub struct Impls;
 
 #[solidity_interface(name = OurInterface)]

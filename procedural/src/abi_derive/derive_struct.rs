@@ -119,7 +119,7 @@ pub fn impl_struct_abi_read(
 ) -> proc_macro2::TokenStream {
 	quote!(
 		impl ::evm_coder::abi::AbiRead for #name {
-			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::execution::Result<Self> {
+			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Self> {
 				let #tuple_names = <#tuple_type as ::evm_coder::abi::AbiRead>::abi_read(reader)?;
 				Ok(#struct_from_tuple)
 			}

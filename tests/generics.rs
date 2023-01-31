@@ -18,6 +18,8 @@ use std::marker::PhantomData;
 use evm_coder::{execution::Result, generate_stubgen, solidity_interface, types::*};
 use primitive_types::U256;
 
+type Result<T> = core::result::Result<T, String>;
+
 pub struct Generic<T>(PhantomData<T>);
 
 #[solidity_interface(name = GenericIs)]
