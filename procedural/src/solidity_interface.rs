@@ -26,13 +26,12 @@ use syn::{
 	PatType, ReturnType, Type,
 	spanned::Spanned,
 	parse::{Parse, ParseStream},
-	parenthesized, Token, LitInt, LitStr,
+	parenthesized, Token, LitInt, LitStr, Path, PathArguments,
 };
 
 use crate::{
-	parse_ident_from_pat, parse_ident_from_path, parse_path, parse_path_segment, parse_result_ok,
-	pascal_ident_to_call, pascal_ident_to_snake_call, snake_ident_to_pascal,
-	snake_ident_to_screaming,
+	parse_ident_from_pat, parse_ident_from_path, parse_path, parse_path_segment,
+	pascal_ident_to_call, snake_ident_to_pascal, snake_ident_to_screaming,
 };
 
 struct Is {
@@ -95,7 +94,7 @@ impl Is {
 			}
 		});
 		quote! {
-			#call_name::#name(call) #condition => return <#via_typ as ::evm_coder::Callable<#pascal_call_name #generics>>::call(self #via_map, Msg {
+			#call_name::#name(call) #condition => return <#via_typ as ::evm_coder::Callable<#pascal_call_name #generics>>::call(self #via_map, ::evm_coder::types::Msg {
 				call,
 				caller: c.caller,
 				value: c.value,
@@ -563,7 +562,6 @@ impl Method {
 			ReturnType::Type(_, ty) => ty,
 			_ => return Err(syn::Error::new(value.sig.output.span(), "interface method should return Result<value>\nif there is no value to return - specify void (which is alias to unit)")),
 		};
-		let result = parse_result_ok(result)?;
 
 		let camel_name = info
 			.rename_selector
@@ -665,7 +663,11 @@ impl Method {
 		}
 	}
 
-	fn expand_variant_call(&self, call_name: &proc_macro2::Ident) -> proc_macro2::TokenStream {
+	fn expand_variant_call(
+		&self,
+		result_macro_name: &Path,
+		call_name: &proc_macro2::Ident,
+	) -> proc_macro2::TokenStream {
 		let pascal_name = &self.pascal_name;
 		let name = &self.name;
 
@@ -698,41 +700,15 @@ impl Method {
 					#(
 						#args,
 					)*
-				)?;
-				(&result).to_result()
-			}
-		}
-	}
-
-	fn expand_variant_weight(&self) -> proc_macro2::TokenStream {
-		let pascal_name = &self.pascal_name;
-		if let Some(weight) = &self.weight {
-			let matcher = if self.has_normal_args {
-				let names = self
-					.args
-					.iter()
-					.filter(|a| !a.is_special())
-					.map(|a| &a.name);
-
-				quote! {{
-					#(
-						#names,
-					)*
-				}}
-			} else {
-				quote! {}
-			};
-			quote! {
-				Self::#pascal_name #matcher => (#weight).into()
-			}
-		} else {
-			let matcher = if self.has_normal_args {
-				quote! {{..}}
-			} else {
-				quote! {}
-			};
-			quote! {
-				Self::#pascal_name #matcher => ().into()
+				);
+				let result = #result_macro_name!(result);
+				result.map(|post| {
+					<Self as ::evm_coder::Contract>::map_post(post, |res| {
+						let mut writer = ::evm_coder::abi::AbiWriter::default();
+						<_ as AbiWrite>::abi_write(&res, &mut writer);
+						writer
+					})
+				})
 			}
 		}
 	}
@@ -843,6 +819,7 @@ fn generics_data(gen: &Generics) -> proc_macro2::TokenStream {
 pub struct SolidityInterface {
 	generics: Generics,
 	name: Box<syn::Type>,
+	result_macro_name: Path,
 	info: InterfaceInfo,
 	methods: Vec<Method>,
 	docs: Vec<String>,
@@ -870,9 +847,16 @@ impl SolidityInterface {
 				docs.push(value);
 			}
 		}
+		let mut result_macro_name = parse_path(&value.self_ty)?.to_owned();
+		if let Some(last) = result_macro_name.segments.iter_mut().last() {
+			last.ident = format_ident!("{}_result", &last.ident);
+			last.arguments = PathArguments::None;
+		}
+
 		Ok(Self {
 			generics: value.generics.clone(),
 			name: value.self_ty.clone(),
+			result_macro_name,
 			info,
 			methods,
 			docs,
@@ -926,8 +910,7 @@ impl SolidityInterface {
 		let call_variants_this = self
 			.methods
 			.iter()
-			.map(|m| Method::expand_variant_call(m, &call_name));
-		let weight_variants_this = self.methods.iter().map(Method::expand_variant_weight);
+			.map(|m| Method::expand_variant_call(m, &self.result_macro_name, &call_name));
 		let solidity_functions = self.methods.iter().map(Method::expand_solidity_function);
 
 		// TODO: Inline inline_is
@@ -1063,7 +1046,7 @@ impl SolidityInterface {
 			#gen_where
 			{
 				#[allow(unreachable_code)] // In case of no inner calls
-				fn call(&mut self, c: Msg<#call_name #gen_ref>) -> ::evm_coder::execution::ResultWithPostInfo<::evm_coder::abi::AbiWriter> {
+				fn call(&mut self, c: ::evm_coder::types::Msg<#call_name #gen_ref>) -> <Self as ::evm_coder::Contract>::Result<::evm_coder::abi::AbiWriter> {
 					use ::evm_coder::abi::AbiWrite;
 					match c.call {
 						#(
@@ -1076,12 +1059,11 @@ impl SolidityInterface {
 						}
 						_ => {},
 					}
-					let mut writer = ::evm_coder::abi::AbiWriter::default();
 					match c.call {
 						#(
 							#call_variants_this,
 						)*
-						_ => Err(::evm_coder::execution::Error::from("method is not available").into()),
+						_ => Err("method is not available".into()),
 					}
 				}
 			}

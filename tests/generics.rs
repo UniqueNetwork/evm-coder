@@ -15,12 +15,17 @@
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
 use std::marker::PhantomData;
-use evm_coder::{execution::Result, generate_stubgen, solidity_interface, types::*};
+use evm_coder::{generate_stubgen, solidity_interface, types::*, dummy_contract};
 use primitive_types::U256;
 
 type Result<T> = core::result::Result<T, String>;
 
 pub struct Generic<T>(PhantomData<T>);
+
+dummy_contract! {
+	macro_rules! Generic_result {...}
+	impl<T> Contract for Generic<T> {...}
+}
 
 #[solidity_interface(name = GenericIs)]
 impl<T> Generic<T> {
@@ -43,7 +48,7 @@ impl<T> Generic<T>
 where
 	T: core::fmt::Debug,
 {
-	fn test_3(&self) -> Result<U256> {
+	fn test_3(&self) -> U256 {
 		unreachable!()
 	}
 }

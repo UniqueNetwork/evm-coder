@@ -16,14 +16,16 @@
 
 #![allow(dead_code)] // This test only checks that macros is not panicking
 
-use evm_coder::{
-	abi::AbiType, ToLog, execution::Result, solidity_interface, types::*, solidity, weight,
-};
+use evm_coder::{abi::AbiType, ToLog, solidity_interface, types::*, dummy_contract};
 use primitive_types::U256;
 
 type Result<T> = core::result::Result<T, String>;
 
 pub struct Impls;
+dummy_contract! {
+	macro_rules! Impls_result {...}
+	impl Contract for Impls {...}
+}
 
 #[solidity_interface(name = OurInterface)]
 impl Impls {

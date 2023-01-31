@@ -1,7 +1,12 @@
+use evm_coder::{types::*, solidity_interface, dummy_contract};
 
 type Result<T> = core::result::Result<T, String>;
 
 pub struct Contract(bool);
+dummy_contract! {
+	macro_rules! Contract_result {...}
+	impl Contract for Contract {...}
+}
 
 #[solidity_interface(name = A)]
 impl Contract {
