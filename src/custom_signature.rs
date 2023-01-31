@@ -5,7 +5,7 @@
 //!
 //! ### Type signatures
 //! To create the desired type signature, you need to create your own trait with the `SIGNATURE` constant.
-//! Then in the implementation, for the required type, use the macro [`make_signature`]
+//! Then in the implementation, for the required type, use the macro [`make_signature`](crate::make_signature)
 //! #### Example
 //! ```
 //! use std::str::from_utf8;
@@ -42,9 +42,6 @@
 //! assert_eq!(<(u32, u8)>::name(), "(uint32,uint8)");
 //! ```
 //!
-//! ### Function signatures
-//! To create a function signature, the macro [`make_signature`] is also used, which accepts
-//! settings for the function format [`SignaturePreferences`] and function parameters [`SignatureUnit`]
 //! #### Example
 //! ```
 //! use core::str::from_utf8;

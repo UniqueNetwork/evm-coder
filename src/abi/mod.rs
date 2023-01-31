@@ -148,7 +148,7 @@ impl<'i> AbiReader<'i> {
 		Ok(subresult.buf[subresult.offset..subresult.offset + length].into())
 	}
 
-	/// Read [`string`] at current position, then advance
+	/// Read [`String`] at current position, then advance
 	pub fn string(&mut self) -> Result<String> {
 		String::from_utf8(self.bytes()?).map_err(|_| Error::Error(ExitError::InvalidRange))
 	}
@@ -186,7 +186,7 @@ impl<'i> AbiReader<'i> {
 	}
 
 	/// Slice recursive buffer, advance one word for buffer offset
-	/// If `size` is [`None`] then [`Self::offset`] and [`Self::subresult_offset`] evals from [`Self::buf`].
+	/// If `size` is [`None`] then offsets evals from internal buffer.
 	pub fn subresult(&mut self, size: Option<usize>) -> Result<AbiReader<'i>> {
 		let subresult_offset = self.subresult_offset;
 		let offset = if let Some(size) = size {

@@ -7,7 +7,7 @@ use core::str::from_utf8;
 
 /// Helper for type.
 pub trait AbiType {
-	/// Signature for Etherium ABI.
+	/// Signature for Ethereum ABI.
 	const SIGNATURE: SignatureUnit;
 
 	/// Signature as str.

@@ -244,6 +244,7 @@ pub fn to_log(value: TokenStream) -> TokenStream {
 	.into()
 }
 
+/// See documentation for this proc-macro reexported in `evm-coder` crate
 #[proc_macro_derive(AbiCoder)]
 pub fn abi_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	let ast = syn::parse(input).unwrap();
