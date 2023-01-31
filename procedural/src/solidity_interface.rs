@@ -220,6 +220,7 @@ pub struct InterfaceInfo {
 	inline_is: IsList,
 	events: IsList,
 	expect_selector: Option<u32>,
+	enum_attrs: Vec<TokenStream>,
 }
 impl Parse for InterfaceInfo {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -228,6 +229,7 @@ impl Parse for InterfaceInfo {
 		let mut inline_is = None;
 		let mut events = None;
 		let mut expect_selector = None;
+		let mut enum_attrs = Vec::new();
 		// TODO: create proc-macro to optimize proc-macro boilerplate? :D
 		loop {
 			let lookahead = input.lookahead1();
@@ -268,6 +270,11 @@ impl Parse for InterfaceInfo {
 				{
 					return Err(syn::Error::new(k.span(), "expect_selector is already set"));
 				}
+			} else if lookahead.peek(Token![enum]) {
+				input.parse::<Token![enum]>()?;
+				let contents;
+				parenthesized!(contents in input);
+				enum_attrs.push(contents.parse()?);
 			} else if input.is_empty() {
 				break;
 			} else {
@@ -285,6 +292,7 @@ impl Parse for InterfaceInfo {
 			inline_is: inline_is.unwrap_or_default(),
 			events: events.unwrap_or_default(),
 			expect_selector,
+			enum_attrs,
 		})
 	}
 }
@@ -292,11 +300,13 @@ impl Parse for InterfaceInfo {
 struct MethodInfo {
 	rename_selector: Option<String>,
 	hide: bool,
+	enum_attrs: Vec<TokenStream>,
 }
 impl Parse for MethodInfo {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
 		let mut rename_selector = None;
 		let mut hide = false;
+		let mut enum_attrs = Vec::new();
 		while !input.is_empty() {
 			let lookahead = input.lookahead1();
 			if lookahead.peek(kw::rename_selector) {
@@ -311,6 +321,11 @@ impl Parse for MethodInfo {
 			} else if lookahead.peek(kw::hide) {
 				input.parse::<kw::hide>()?;
 				hide = true;
+			} else if lookahead.peek(Token![enum]) {
+				input.parse::<Token![enum]>()?;
+				let contents;
+				parenthesized!(contents in input);
+				enum_attrs.push(contents.parse()?);
 			} else {
 				return Err(lookahead.error());
 			}
@@ -324,6 +339,7 @@ impl Parse for MethodInfo {
 		Ok(Self {
 			rename_selector,
 			hide,
+			enum_attrs,
 		})
 	}
 }
@@ -476,12 +492,14 @@ struct Method {
 	result: Type,
 	weight: Option<Expr>,
 	docs: Vec<String>,
+	enum_attrs: Vec<TokenStream>,
 }
 impl Method {
 	fn try_from(value: &mut ImplItemMethod) -> syn::Result<Self> {
 		let mut info = MethodInfo {
 			rename_selector: None,
 			hide: false,
+			enum_attrs: Vec::new(),
 		};
 		let mut docs = Vec::new();
 
@@ -578,8 +596,8 @@ impl Method {
 			has_value_args,
 			mutability,
 			result: result.clone(),
-			weight,
 			docs,
+			enum_attrs: info.enum_attrs,
 		})
 	}
 	fn expand_call_def(&self) -> proc_macro2::TokenStream {
@@ -590,10 +608,12 @@ impl Method {
 			.map(|a| a.expand_call_def());
 		let pascal_name = &self.pascal_name;
 		let docs = &self.docs;
+		let enum_attrs = &self.enum_attrs;
 
 		if self.has_normal_args {
 			quote! {
 				#(#[doc = #docs])*
+				#(#[#enum_attrs])*
 				#[allow(missing_docs)]
 				#pascal_name {
 					#(
@@ -604,6 +624,7 @@ impl Method {
 		} else {
 			quote! {
 				#(#[doc = #docs])*
+				#(#[#enum_attrs])*
 				#[allow(missing_docs)]
 				#pascal_name
 			}
@@ -949,6 +970,7 @@ impl SolidityInterface {
 		let solidity_event_generators = self.info.events.0.iter().map(Is::expand_event_generator);
 		let solidity_events_idents = self.info.events.0.iter().map(|is| is.name.clone());
 		let docs = &self.docs;
+		let enum_attrs = &self.info.enum_attrs;
 
 		let expect_selector = self.info.expect_selector.map(|s| {
             quote! {
@@ -962,6 +984,7 @@ impl SolidityInterface {
 			)*
 			#[derive(Debug)]
 			#(#[doc = #docs])*
+			#(#[#enum_attrs])*
 			pub enum #call_name #gen_ref {
 				/// Inherited method
 				ERC165Call(::evm_coder::ERC165Call, ::core::marker::PhantomData<#gen_data>),

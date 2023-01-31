@@ -87,10 +87,6 @@ pub mod custom_signature;
 /// }
 /// ```
 pub use evm_coder_procedural::solidity_interface;
-/// See [`solidity_interface`]
-pub use evm_coder_procedural::solidity;
-/// See [`solidity_interface`]
-pub use evm_coder_procedural::weight;
 
 /// Macro to include support for structures and enums in Solidity.
 ///
