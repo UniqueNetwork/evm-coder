@@ -16,9 +16,9 @@
 
 //! Implementation of EVM RLP reader/writer
 
-#![allow(dead_code)]
-
 mod traits;
+use core::{result, fmt};
+
 pub use traits::*;
 mod impls;
 
@@ -27,16 +27,40 @@ mod test;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use evm_core::ExitError;
 use primitive_types::{H160, U256};
 
-use crate::{
-	execution::{Result, Error},
-	types::*,
-};
+use crate::{types::*};
 
 /// Aligment for every simple type in bytes.
 pub const ABI_ALIGNMENT: usize = 32;
+
+/// Abi parsing result
+pub type Result<T, E = Error> = result::Result<T, E>;
+
+/// Generic decode failure
+#[derive(Debug)]
+pub enum Error {
+	/// Input was shorter than expected
+	OutOfOffset,
+	/// Something is off about paddings
+	InvalidRange,
+	/// Custom parsing error
+	Custom(&'static str),
+}
+impl fmt::Display for Error {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Error::OutOfOffset => write!(f, "out of offset"),
+			Error::InvalidRange => write!(f, "invalid range"),
+			Error::Custom(m) => write!(f, "{m}"),
+		}
+	}
+}
+impl From<&'static str> for Error {
+	fn from(value: &'static str) -> Self {
+		Self::Custom(value)
+	}
+}
 
 /// View into RLP data, which provides method to read typed items from it
 #[derive(Clone)]
@@ -57,7 +81,7 @@ impl<'i> AbiReader<'i> {
 	/// Start reading RLP buffer, parsing first 4 bytes as selector
 	pub fn new_call(buf: &'i [u8]) -> Result<(Bytes4, Self)> {
 		if buf.len() < 4 {
-			return Err(Error::Error(ExitError::OutOfOffset));
+			return Err(Error::OutOfOffset);
 		}
 		let mut method_id = [0; 4];
 		method_id.copy_from_slice(&buf[0..4]);
@@ -81,12 +105,12 @@ impl<'i> AbiReader<'i> {
 		block_end: usize,
 	) -> Result<[u8; S]> {
 		if buf.len() - offset < ABI_ALIGNMENT {
-			return Err(Error::Error(ExitError::OutOfOffset));
+			return Err(Error::OutOfOffset);
 		}
 		let mut block = [0; S];
 		let is_pad_zeroed = buf[pad_start..pad_end].iter().all(|&v| v == 0);
 		if !is_pad_zeroed {
-			return Err(Error::Error(ExitError::InvalidRange));
+			return Err(Error::InvalidRange);
 		}
 		block.copy_from_slice(&buf[block_start..block_end]);
 		Ok(block)
@@ -129,7 +153,7 @@ impl<'i> AbiReader<'i> {
 		match data[0] {
 			0 => Ok(false),
 			1 => Ok(true),
-			_ => Err(Error::Error(ExitError::InvalidRange)),
+			_ => Err(Error::InvalidRange),
 		}
 	}
 
@@ -143,14 +167,14 @@ impl<'i> AbiReader<'i> {
 		let mut subresult = self.subresult(None)?;
 		let length = subresult.uint32()? as usize;
 		if subresult.buf.len() < subresult.offset + length {
-			return Err(Error::Error(ExitError::OutOfOffset));
+			return Err(Error::OutOfOffset);
 		}
 		Ok(subresult.buf[subresult.offset..subresult.offset + length].into())
 	}
 
 	/// Read [`String`] at current position, then advance
 	pub fn string(&mut self) -> Result<String> {
-		String::from_utf8(self.bytes()?).map_err(|_| Error::Error(ExitError::InvalidRange))
+		String::from_utf8(self.bytes()?).map_err(|_| Error::InvalidRange)
 	}
 
 	/// Read [`u8`] at current position, then advance
@@ -197,7 +221,7 @@ impl<'i> AbiReader<'i> {
 		};
 
 		if offset + self.subresult_offset > self.buf.len() {
-			return Err(Error::Error(ExitError::InvalidRange));
+			return Err(Error::InvalidRange);
 		}
 
 		let new_offset = offset + subresult_offset;
@@ -243,7 +267,7 @@ impl AbiWriter {
 	/// Initialize internal buffers, inserting method selector at beginning
 	pub fn new_call(method_id: u32) -> Self {
 		let mut val = Self::new();
-		val.static_part.extend(&method_id.to_be_bytes());
+		val.static_part.extend(method_id.to_be_bytes());
 		val.had_call = true;
 		val
 	}
@@ -269,7 +293,7 @@ impl AbiWriter {
 
 	/// Write [`bool`] to end of buffer
 	pub fn bool(&mut self, value: &bool) {
-		self.write_padleft(&[if *value { 1 } else { 0 }])
+		self.write_padleft(&[u8::from(*value)])
 	}
 
 	/// Write [`u8`] to end of buffer

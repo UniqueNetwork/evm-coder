@@ -1,9 +1,4 @@
-use crate::{
-	custom_signature::SignatureUnit,
-	execution::{Result, ResultWithPostInfo, WithPostDispatchInfo},
-	make_signature, sealed,
-	types::*,
-};
+use crate::{custom_signature::SignatureUnit, make_signature, sealed, types::*, abi::Result};
 use super::{traits::*, ABI_ALIGNMENT, AbiReader, AbiWriter};
 use primitive_types::{U256, H160};
 
@@ -156,29 +151,6 @@ impl<T: AbiWrite + AbiType> AbiWrite for Vec<T> {
 
 impl AbiWrite for () {
 	fn abi_write(&self, _writer: &mut AbiWriter) {}
-}
-
-/// This particular AbiWrite implementation should be split to another trait,
-/// which only implements `to_result`, but due to lack of specialization feature
-/// in stable Rust, we can't have blanket impl of this trait `for T where T: AbiWrite`,
-/// so here we abusing default trait methods for it
-impl<T: AbiWrite> AbiWrite for ResultWithPostInfo<T> {
-	fn abi_write(&self, _writer: &mut AbiWriter) {
-		debug_assert!(false, "shouldn't be called, see comment")
-	}
-	fn to_result(&self) -> ResultWithPostInfo<AbiWriter> {
-		match self {
-			Ok(v) => Ok(WithPostDispatchInfo {
-				post_info: v.post_info.clone(),
-				data: {
-					let mut out = AbiWriter::new();
-					v.data.abi_write(&mut out);
-					out
-				},
-			}),
-			Err(e) => Err(e.clone()),
-		}
-	}
 }
 
 macro_rules! impl_tuples {

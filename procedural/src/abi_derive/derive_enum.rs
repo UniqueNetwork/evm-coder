@@ -98,7 +98,7 @@ pub fn impl_enum_abi_type(name: &syn::Ident) -> proc_macro2::TokenStream {
 pub fn impl_enum_abi_read(name: &syn::Ident) -> proc_macro2::TokenStream {
 	quote!(
 		impl ::evm_coder::abi::AbiRead for #name {
-			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::execution::Result<Self> {
+			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Self> {
 				Ok(
 					<u8 as ::evm_coder::abi::AbiRead>::abi_read(reader)?
 						.try_into()?

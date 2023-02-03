@@ -342,7 +342,7 @@ fn encode_decode_tuple0_tuple1_uint8_tuple1_string_bytes_tuple1_uint8_bytes() {
 
 	test_impl::<((u8,), (String, Bytes), (u8, Bytes))>(
 		0xdeadbeef,
-		((int,), (string.clone(), by.clone()), (int, by)),
+		((int,), (string, by.clone()), (int, by)),
 		&hex!(
 			"
                 deadbeef

@@ -139,46 +139,16 @@ mod test_struct {
 
 	#[test]
 	fn impl_abi_type_is_dynamic() {
-		assert_eq!(
-			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			false
-		);
-		assert_eq!(
-			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			true
-		);
-		assert_eq!(
-			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			false
-		);
-		assert_eq!(
-			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			true
-		);
-		assert_eq!(
-			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::is_dynamic(),
-			true
-		);
-		assert_eq!(
-			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			false
-		);
-		assert_eq!(
-			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			false
-		);
-		assert_eq!(
-			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			true
-		);
-		assert_eq!(
-			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			true
-		);
-		assert_eq!(
-			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::is_dynamic(),
-			true
-		);
+		assert!(!<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(!<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct2MixedParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::is_dynamic(),);
 	}
 
 	#[test]
@@ -500,8 +470,8 @@ mod test_struct {
 	{
 		let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
 		data.abi_write(&mut writer);
-		let encoded_tuple = writer.finish();
-		encoded_tuple
+
+		writer.finish()
 	}
 
 	#[test]
@@ -575,8 +545,8 @@ mod test_struct {
 		let _a: u8 = 0xff;
 		let _b: Bytes = Bytes(vec![0x11, 0x22, 0x33]);
 		test_impl::<(u8, Bytes), TupleStruct2MixedParam, TypeStruct2MixedParam>(
-			(_a.clone(), _b.clone()),
-			TupleStruct2MixedParam(_a.clone(), _b.clone()),
+			(_a, _b.clone()),
+			TupleStruct2MixedParam(_a, _b.clone()),
 			TypeStruct2MixedParam { _a, _b },
 		);
 	}
@@ -642,7 +612,7 @@ mod test_struct {
 			TypeStruct3DerivedMixedParam {
 				_a: TypeStruct1SimpleParam { _a: int },
 				_b: TypeStruct2DynamicParam {
-					_a: string.clone(),
+					_a: string,
 					_b: by.clone(),
 				},
 				_c: TypeStruct2MixedParam { _a: int, _b: by },

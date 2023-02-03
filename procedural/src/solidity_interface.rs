@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
-#![allow(dead_code)]
-
 // NOTE: In order to understand this Rust macro better, first read this chapter
 // about Procedural Macros in Rust book:
 // https://doc.rust-lang.org/reference/procedural-macros.html
@@ -28,19 +26,17 @@ use syn::{
 	PatType, ReturnType, Type,
 	spanned::Spanned,
 	parse::{Parse, ParseStream},
-	parenthesized, Token, LitInt, LitStr,
+	parenthesized, Token, LitInt, LitStr, Path, PathArguments,
 };
 
 use crate::{
-	parse_ident_from_pat, parse_ident_from_path, parse_path, parse_path_segment, parse_result_ok,
-	pascal_ident_to_call, pascal_ident_to_snake_call, snake_ident_to_pascal,
-	snake_ident_to_screaming,
+	parse_ident_from_pat, parse_ident_from_path, parse_path, parse_path_segment,
+	pascal_ident_to_call, snake_ident_to_pascal, snake_ident_to_screaming,
 };
 
 struct Is {
 	name: Ident,
 	pascal_call_name: Ident,
-	snake_call_name: Ident,
 	via: Option<(Type, Ident)>,
 	condition: Option<Expr>,
 }
@@ -75,13 +71,6 @@ impl Is {
 		}
 	}
 
-	fn expand_variant_weight(&self) -> proc_macro2::TokenStream {
-		let name = &self.name;
-		quote! {
-			Self::#name(call) => call.weight()
-		}
-	}
-
 	fn expand_variant_call(
 		&self,
 		call_name: &proc_macro2::Ident,
@@ -105,7 +94,7 @@ impl Is {
 			}
 		});
 		quote! {
-			#call_name::#name(call) #condition => return <#via_typ as ::evm_coder::Callable<#pascal_call_name #generics>>::call(self #via_map, Msg {
+			#call_name::#name(call) #condition => return <#via_typ as ::evm_coder::Callable<#pascal_call_name #generics>>::call(self #via_map, ::evm_coder::types::Msg {
 				call,
 				caller: c.caller,
 				value: c.value,
@@ -198,7 +187,6 @@ impl Parse for IsList {
 			};
 			out.push(Is {
 				pascal_call_name: pascal_ident_to_call(&name),
-				snake_call_name: pascal_ident_to_snake_call(&name),
 				name,
 				via,
 				condition,
@@ -220,6 +208,7 @@ pub struct InterfaceInfo {
 	inline_is: IsList,
 	events: IsList,
 	expect_selector: Option<u32>,
+	enum_attrs: Vec<TokenStream>,
 }
 impl Parse for InterfaceInfo {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -228,6 +217,7 @@ impl Parse for InterfaceInfo {
 		let mut inline_is = None;
 		let mut events = None;
 		let mut expect_selector = None;
+		let mut enum_attrs = Vec::new();
 		// TODO: create proc-macro to optimize proc-macro boilerplate? :D
 		loop {
 			let lookahead = input.lookahead1();
@@ -268,6 +258,11 @@ impl Parse for InterfaceInfo {
 				{
 					return Err(syn::Error::new(k.span(), "expect_selector is already set"));
 				}
+			} else if lookahead.peek(Token![enum]) {
+				input.parse::<Token![enum]>()?;
+				let contents;
+				parenthesized!(contents in input);
+				enum_attrs.push(contents.parse()?);
 			} else if input.is_empty() {
 				break;
 			} else {
@@ -285,6 +280,7 @@ impl Parse for InterfaceInfo {
 			inline_is: inline_is.unwrap_or_default(),
 			events: events.unwrap_or_default(),
 			expect_selector,
+			enum_attrs,
 		})
 	}
 }
@@ -292,11 +288,13 @@ impl Parse for InterfaceInfo {
 struct MethodInfo {
 	rename_selector: Option<String>,
 	hide: bool,
+	enum_attrs: Vec<TokenStream>,
 }
 impl Parse for MethodInfo {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
 		let mut rename_selector = None;
 		let mut hide = false;
+		let mut enum_attrs = Vec::new();
 		while !input.is_empty() {
 			let lookahead = input.lookahead1();
 			if lookahead.peek(kw::rename_selector) {
@@ -311,6 +309,11 @@ impl Parse for MethodInfo {
 			} else if lookahead.peek(kw::hide) {
 				input.parse::<kw::hide>()?;
 				hide = true;
+			} else if lookahead.peek(Token![enum]) {
+				input.parse::<Token![enum]>()?;
+				let contents;
+				parenthesized!(contents in input);
+				enum_attrs.push(contents.parse()?);
 			} else {
 				return Err(lookahead.error());
 			}
@@ -324,6 +327,7 @@ impl Parse for MethodInfo {
 		Ok(Self {
 			rename_selector,
 			hide,
+			enum_attrs,
 		})
 	}
 }
@@ -473,22 +477,25 @@ struct Method {
 	has_normal_args: bool,
 	has_value_args: bool,
 	mutability: Mutability,
-	result: Type,
-	weight: Option<Expr>,
+	result: Box<Type>,
 	docs: Vec<String>,
+	enum_attrs: Vec<TokenStream>,
 }
 impl Method {
-	fn try_from(value: &ImplItemMethod) -> syn::Result<Self> {
+	fn try_from(value: &mut ImplItemMethod) -> syn::Result<Self> {
 		let mut info = MethodInfo {
 			rename_selector: None,
 			hide: false,
+			enum_attrs: Vec::new(),
 		};
 		let mut docs = Vec::new();
-		let mut weight = None;
-		for attr in &value.attrs {
+
+		let mut to_remove = Vec::new();
+		for (i, attr) in value.attrs.iter().enumerate() {
 			let ident = parse_ident_from_path(&attr.path, false)?;
 			if ident == "solidity" {
 				info = attr.parse_args::<MethodInfo>()?;
+				to_remove.push(i);
 			} else if ident == "doc" {
 				let args = attr.parse_meta().unwrap();
 				let value = match args {
@@ -498,10 +505,12 @@ impl Method {
 					_ => unreachable!(),
 				};
 				docs.push(value);
-			} else if ident == "weight" {
-				weight = Some(attr.parse_args::<Expr>()?);
 			}
 		}
+		for i in to_remove.iter().rev() {
+			value.attrs.remove(*i);
+		}
+
 		let ident = &value.sig.ident;
 		let ident_str = ident.to_string();
 		if !cases::snakecase::is_snake_case(&ident_str) {
@@ -553,7 +562,6 @@ impl Method {
 			ReturnType::Type(_, ty) => ty,
 			_ => return Err(syn::Error::new(value.sig.output.span(), "interface method should return Result<value>\nif there is no value to return - specify void (which is alias to unit)")),
 		};
-		let result = parse_result_ok(result)?;
 
 		let camel_name = info
 			.rename_selector
@@ -572,8 +580,8 @@ impl Method {
 			has_value_args,
 			mutability,
 			result: result.clone(),
-			weight,
 			docs,
+			enum_attrs: info.enum_attrs,
 		})
 	}
 	fn expand_call_def(&self) -> proc_macro2::TokenStream {
@@ -584,10 +592,12 @@ impl Method {
 			.map(|a| a.expand_call_def());
 		let pascal_name = &self.pascal_name;
 		let docs = &self.docs;
+		let enum_attrs = &self.enum_attrs;
 
 		if self.has_normal_args {
 			quote! {
 				#(#[doc = #docs])*
+				#(#[#enum_attrs])*
 				#[allow(missing_docs)]
 				#pascal_name {
 					#(
@@ -598,6 +608,7 @@ impl Method {
 		} else {
 			quote! {
 				#(#[doc = #docs])*
+				#(#[#enum_attrs])*
 				#[allow(missing_docs)]
 				#pascal_name
 			}
@@ -652,7 +663,11 @@ impl Method {
 		}
 	}
 
-	fn expand_variant_call(&self, call_name: &proc_macro2::Ident) -> proc_macro2::TokenStream {
+	fn expand_variant_call(
+		&self,
+		result_macro_name: &Path,
+		call_name: &proc_macro2::Ident,
+	) -> proc_macro2::TokenStream {
 		let pascal_name = &self.pascal_name;
 		let name = &self.name;
 
@@ -685,41 +700,15 @@ impl Method {
 					#(
 						#args,
 					)*
-				)?;
-				(&result).to_result()
-			}
-		}
-	}
-
-	fn expand_variant_weight(&self) -> proc_macro2::TokenStream {
-		let pascal_name = &self.pascal_name;
-		if let Some(weight) = &self.weight {
-			let matcher = if self.has_normal_args {
-				let names = self
-					.args
-					.iter()
-					.filter(|a| !a.is_special())
-					.map(|a| &a.name);
-
-				quote! {{
-					#(
-						#names,
-					)*
-				}}
-			} else {
-				quote! {}
-			};
-			quote! {
-				Self::#pascal_name #matcher => (#weight).into()
-			}
-		} else {
-			let matcher = if self.has_normal_args {
-				quote! {{..}}
-			} else {
-				quote! {}
-			};
-			quote! {
-				Self::#pascal_name #matcher => ().into()
+				);
+				let result = #result_macro_name!(result);
+				result.map(|post| {
+					<Self as ::evm_coder::Contract>::map_post(post, |res| {
+						let mut writer = ::evm_coder::abi::AbiWriter::default();
+						<_ as AbiWrite>::abi_write(&res, &mut writer);
+						writer
+					})
+				})
 			}
 		}
 	}
@@ -830,15 +819,16 @@ fn generics_data(gen: &Generics) -> proc_macro2::TokenStream {
 pub struct SolidityInterface {
 	generics: Generics,
 	name: Box<syn::Type>,
+	result_macro_name: Path,
 	info: InterfaceInfo,
 	methods: Vec<Method>,
 	docs: Vec<String>,
 }
 impl SolidityInterface {
-	pub fn try_from(info: InterfaceInfo, value: &ItemImpl) -> syn::Result<Self> {
+	pub fn try_from(info: InterfaceInfo, value: &mut ItemImpl) -> syn::Result<Self> {
 		let mut methods = Vec::new();
 
-		for item in &value.items {
+		for item in &mut value.items {
 			if let ImplItem::Method(method) = item {
 				methods.push(Method::try_from(method)?)
 			}
@@ -857,9 +847,16 @@ impl SolidityInterface {
 				docs.push(value);
 			}
 		}
+		let mut result_macro_name = parse_path(&value.self_ty)?.to_owned();
+		if let Some(last) = result_macro_name.segments.iter_mut().last() {
+			last.ident = format_ident!("{}_result", &last.ident);
+			last.arguments = PathArguments::None;
+		}
+
 		Ok(Self {
 			generics: value.generics.clone(),
 			name: value.self_ty.clone(),
+			result_macro_name,
 			info,
 			methods,
 			docs,
@@ -897,13 +894,6 @@ impl SolidityInterface {
 			.iter()
 			.chain(self.info.is.0.iter())
 			.map(|c| Is::expand_variant_call(c, &call_name, &gen_ref));
-		let weight_variants = self
-			.info
-			.inline_is
-			.0
-			.iter()
-			.chain(self.info.is.0.iter())
-			.map(Is::expand_variant_weight);
 
 		let inline_interface_id = self.info.inline_is.0.iter().map(Is::expand_interface_id);
 		let supports_interface = self
@@ -920,8 +910,7 @@ impl SolidityInterface {
 		let call_variants_this = self
 			.methods
 			.iter()
-			.map(|m| Method::expand_variant_call(m, &call_name));
-		let weight_variants_this = self.methods.iter().map(Method::expand_variant_weight);
+			.map(|m| Method::expand_variant_call(m, &self.result_macro_name, &call_name));
 		let solidity_functions = self.methods.iter().map(Method::expand_solidity_function);
 
 		// TODO: Inline inline_is
@@ -943,6 +932,7 @@ impl SolidityInterface {
 		let solidity_event_generators = self.info.events.0.iter().map(Is::expand_event_generator);
 		let solidity_events_idents = self.info.events.0.iter().map(|is| is.name.clone());
 		let docs = &self.docs;
+		let enum_attrs = &self.info.enum_attrs;
 
 		let expect_selector = self.info.expect_selector.map(|s| {
             quote! {
@@ -956,6 +946,7 @@ impl SolidityInterface {
 			)*
 			#[derive(Debug)]
 			#(#[doc = #docs])*
+			#(#[#enum_attrs])*
 			pub enum #call_name #gen_ref {
 				/// Inherited method
 				ERC165Call(::evm_coder::ERC165Call, ::core::marker::PhantomData<#gen_data>),
@@ -1019,7 +1010,7 @@ impl SolidityInterface {
 				}
 			}
 			impl #gen_ref ::evm_coder::Call for #call_name #gen_ref {
-				fn parse(method_id: ::evm_coder::types::Bytes4, reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::execution::Result<Option<Self>> {
+				fn parse(method_id: ::evm_coder::types::Bytes4, reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Option<Self>> {
 					use ::evm_coder::abi::AbiRead;
 					match method_id {
 						::evm_coder::ERC165Call::INTERFACE_ID => return Ok(
@@ -1051,28 +1042,11 @@ impl SolidityInterface {
 					)
 				}
 			}
-			impl #generics ::evm_coder::Weighted for #call_name #gen_ref
-			#gen_where
-			{
-				#[allow(unused_variables)]
-				fn weight(&self) -> ::evm_coder::execution::DispatchInfo {
-					match self {
-						#(
-							#weight_variants,
-						)*
-						// It should be very cheap, but not free
-						Self::ERC165Call(::evm_coder::ERC165Call::SupportsInterface {..}, _) => ::frame_support::weights::Weight::from_ref_time(100).into(),
-						#(
-							#weight_variants_this,
-						)*
-					}
-				}
-			}
 			impl #generics ::evm_coder::Callable<#call_name #gen_ref> for #name
 			#gen_where
 			{
 				#[allow(unreachable_code)] // In case of no inner calls
-				fn call(&mut self, c: Msg<#call_name #gen_ref>) -> ::evm_coder::execution::ResultWithPostInfo<::evm_coder::abi::AbiWriter> {
+				fn call(&mut self, c: ::evm_coder::types::Msg<#call_name #gen_ref>) -> <Self as ::evm_coder::Contract>::Result<::evm_coder::abi::AbiWriter> {
 					use ::evm_coder::abi::AbiWrite;
 					match c.call {
 						#(
@@ -1085,12 +1059,11 @@ impl SolidityInterface {
 						}
 						_ => {},
 					}
-					let mut writer = ::evm_coder::abi::AbiWriter::default();
 					match c.call {
 						#(
 							#call_variants_this,
 						)*
-						_ => Err(::evm_coder::execution::Error::from("method is not available").into()),
+						_ => Err("method is not available".into()),
 					}
 				}
 			}

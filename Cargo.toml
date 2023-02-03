@@ -12,9 +12,6 @@ evm-coder-procedural = { path = "./procedural" }
 primitive-types = { version = "0.12.1", default-features = false }
 # Evm doesn't have reexports for log and others
 ethereum = { version = "0.14.0", default-features = false }
-frame-support = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
-# Error types for execution
-evm-core = { default-features = false, git = "https://github.com/uniquenetwork/evm", branch = "unique-polkadot-v0.9.36" }
 # We have tuple-heavy code in solidity.rs
 impl-trait-for-tuples = "0.2.2"
 
@@ -22,16 +19,13 @@ impl-trait-for-tuples = "0.2.2"
 # We want to assert some large binary blobs equality in tests
 hex = "0.4.3"
 hex-literal = "0.3.4"
-similar-asserts = "1.4.2"
+similar-asserts = "1.4"
 trybuild = "1.0"
+# Used to demonstrate enum derive feature
+derivative = { version = "2.2" }
 
 [features]
 default = ["std"]
-std = [
-    "ethereum/std",
-    "primitive-types/std",
-    "evm-core/std",
-    "frame-support/std",
-]
+std = ["ethereum/std", "primitive-types/std"]
 # Stub/interface generation
 stubgen = []

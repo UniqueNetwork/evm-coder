@@ -1,8 +1,5 @@
 use super::{AbiReader, AbiWriter};
-use crate::{
-	custom_signature::*,
-	execution::{Result, ResultWithPostInfo},
-};
+use crate::{custom_signature::*, abi::Result};
 use core::str::from_utf8;
 
 /// Helper for type.
@@ -35,11 +32,4 @@ pub trait AbiRead {
 pub trait AbiWrite {
 	/// Write value to end of specified encoder
 	fn abi_write(&self, writer: &mut AbiWriter);
-	/// Specialization for [`crate::solidity_interface`] implementation,
-	/// see comment in `impl AbiWrite for ResultWithPostInfo`
-	fn to_result(&self) -> ResultWithPostInfo<AbiWriter> {
-		let mut writer = AbiWriter::new();
-		self.abi_write(&mut writer);
-		Ok(writer.into())
-	}
 }

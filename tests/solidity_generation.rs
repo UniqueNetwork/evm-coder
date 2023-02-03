@@ -14,10 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
-use evm_coder::{abi::AbiType, execution::Result, generate_stubgen, solidity_interface, types::*};
+use evm_coder::{abi::AbiType, generate_stubgen, solidity_interface, types::*, dummy_contract};
 use primitive_types::U256;
 
+type Result<T> = core::result::Result<T, String>;
+
 pub struct ERC20;
+dummy_contract! {
+	macro_rules! ERC20_result {...}
+	impl Contract for ERC20 {...}
+}
 
 #[solidity_interface(name = ERC20)]
 impl ERC20 {
