@@ -105,18 +105,18 @@ pub use evm_coder_procedural::solidity_interface;
 ///
 /// #[derive(AbiCoder)]
 /// struct Foo {
-/// 	a: u8,
-/// 	b: String
+///     a: u8,
+///     b: String
 /// }
 ///
 /// #[derive(AbiCoder, Default, Clone, Copy)]
-///	#[repr(u8)]
-///	enum Color {
-///		Red,
-///		Green,
-///		#[default]
-///		Blue,
-///	}
+/// #[repr(u8)]
+/// enum Color {
+///     Red,
+///     Green,
+///     #[default]
+///     Blue,
+/// }
 /// ```
 pub use evm_coder_procedural::AbiCoder;
 pub use sha3_const;
