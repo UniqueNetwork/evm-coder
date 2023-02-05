@@ -18,6 +18,8 @@
 // about Procedural Macros in Rust book:
 // https://doc.rust-lang.org/reference/procedural-macros.html
 
+use std::collections::BTreeSet;
+
 use proc_macro2::TokenStream;
 use quote::{quote, format_ident};
 use inflector::cases;
@@ -209,6 +211,7 @@ pub struct InterfaceInfo {
 	events: IsList,
 	expect_selector: Option<u32>,
 	enum_attrs: Vec<TokenStream>,
+	enum_variant_attrs: BTreeSet<Ident>,
 }
 impl Parse for InterfaceInfo {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -218,6 +221,7 @@ impl Parse for InterfaceInfo {
 		let mut events = None;
 		let mut expect_selector = None;
 		let mut enum_attrs = Vec::new();
+		let mut enum_variant_attrs = BTreeSet::new();
 		// TODO: create proc-macro to optimize proc-macro boilerplate? :D
 		loop {
 			let lookahead = input.lookahead1();
@@ -263,6 +267,11 @@ impl Parse for InterfaceInfo {
 				let contents;
 				parenthesized!(contents in input);
 				enum_attrs.push(contents.parse()?);
+			} else if lookahead.peek(kw::enum_attr) {
+				input.parse::<kw::enum_attr>()?;
+				let contents;
+				parenthesized!(contents in input);
+				enum_variant_attrs.insert(contents.parse()?);
 			} else if input.is_empty() {
 				break;
 			} else {
@@ -281,6 +290,7 @@ impl Parse for InterfaceInfo {
 			events: events.unwrap_or_default(),
 			expect_selector,
 			enum_attrs,
+			enum_variant_attrs,
 		})
 	}
 }
@@ -452,8 +462,6 @@ enum Mutability {
 /// Group all keywords for this macro. Usage example:
 /// #[solidity_interface(name = "B", inline_is(A))]
 mod kw {
-	syn::custom_keyword!(weight);
-
 	syn::custom_keyword!(via);
 	syn::custom_keyword!(returns);
 	syn::custom_keyword!(name);
@@ -461,6 +469,7 @@ mod kw {
 	syn::custom_keyword!(inline_is);
 	syn::custom_keyword!(events);
 	syn::custom_keyword!(expect_selector);
+	syn::custom_keyword!(enum_attr);
 
 	syn::custom_keyword!(rename_selector);
 	syn::custom_keyword!(hide);
@@ -482,7 +491,7 @@ struct Method {
 	enum_attrs: Vec<TokenStream>,
 }
 impl Method {
-	fn try_from(value: &mut ImplItemMethod) -> syn::Result<Self> {
+	fn try_from(value: &mut ImplItemMethod, variant_attrs: &BTreeSet<Ident>) -> syn::Result<Self> {
 		let mut info = MethodInfo {
 			rename_selector: None,
 			hide: false,
@@ -491,6 +500,7 @@ impl Method {
 		let mut docs = Vec::new();
 
 		let mut to_remove = Vec::new();
+		let mut extra_enum_attrs = Vec::new();
 		for (i, attr) in value.attrs.iter().enumerate() {
 			let ident = parse_ident_from_path(&attr.path, false)?;
 			if ident == "solidity" {
@@ -505,6 +515,11 @@ impl Method {
 					_ => unreachable!(),
 				};
 				docs.push(value);
+			} else if variant_attrs.contains(ident) {
+				let path = &attr.path;
+				let tokens = &attr.tokens;
+				extra_enum_attrs.push(quote!{#path #tokens});
+				to_remove.push(i);
 			}
 		}
 		for i in to_remove.iter().rev() {
@@ -581,7 +596,7 @@ impl Method {
 			mutability,
 			result: result.clone(),
 			docs,
-			enum_attrs: info.enum_attrs,
+			enum_attrs: [info.enum_attrs, extra_enum_attrs].concat(),
 		})
 	}
 	fn expand_call_def(&self) -> proc_macro2::TokenStream {
@@ -830,7 +845,7 @@ impl SolidityInterface {
 
 		for item in &mut value.items {
 			if let ImplItem::Method(method) = item {
-				methods.push(Method::try_from(method)?)
+				methods.push(Method::try_from(method, &info.enum_variant_attrs)?)
 			}
 		}
 		let mut docs = vec![];
@@ -1046,7 +1061,7 @@ impl SolidityInterface {
 			#gen_where
 			{
 				#[allow(unreachable_code)] // In case of no inner calls
-				fn call(&mut self, c: ::evm_coder::types::Msg<#call_name #gen_ref>) -> <Self as ::evm_coder::Contract>::Result<::evm_coder::abi::AbiWriter> {
+				fn call(&mut self, c: ::evm_coder::types::Msg<#call_name #gen_ref>) -> ::evm_coder::ResultWithPostInfoOf<Self, ::evm_coder::abi::AbiWriter> {
 					use ::evm_coder::abi::AbiWrite;
 					match c.call {
 						#(
@@ -1055,7 +1070,7 @@ impl SolidityInterface {
 						#call_name::ERC165Call(::evm_coder::ERC165Call::SupportsInterface {interface_id}, _) => {
 							let mut writer = ::evm_coder::abi::AbiWriter::default();
 							writer.bool(&<#call_name #gen_ref>::supports_interface(self, interface_id));
-							return Ok(writer.into());
+							return Ok(<Self as ::evm_coder::Contract>::with_default_post(writer.into()));
 						}
 						_ => {},
 					}
@@ -1063,7 +1078,7 @@ impl SolidityInterface {
 						#(
 							#call_variants_this,
 						)*
-						_ => Err("method is not available".into()),
+						_ => Err(<Self as ::evm_coder::Contract>::with_default_post("method is not available".into())),
 					}
 				}
 			}
