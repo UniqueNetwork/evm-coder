@@ -144,8 +144,8 @@ mod test_struct {
 		assert!(!<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
 		assert!(<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
 		assert!(<TypeStruct2MixedParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(!<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(!<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
 		assert!(<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
 		assert!(<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
 		assert!(<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::is_dynamic(),);
