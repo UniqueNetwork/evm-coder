@@ -222,7 +222,7 @@ dependencies = [
 
 [[package]]
 name = "evm-coder"
-version = "0.1.6"
+version = "0.2.3"
 dependencies = [
  "derivative",
  "ethereum",
