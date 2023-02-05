@@ -226,8 +226,16 @@ pub trait Call: Sized {
 /// on interface implementation, or for externally-owned real EVM contract
 pub trait Callable<C: Call>: Contract {
 	/// Call contract using specified call data
-	fn call(&mut self, call: types::Msg<C>) -> Self::Result<AbiWriter>;
+	fn call(&mut self, call: types::Msg<C>) -> ResultWithPostInfoOf<Self, AbiWriter>;
 }
+
+/// Contract specific result type
+pub type ResultOf<C, R> = <C as Contract>::Result<R, <C as Contract>::Error>;
+/// Contract specific result type
+pub type ResultWithPostInfoOf<C, R> = <C as Contract>::Result<
+	<C as Contract>::WithPostInfo<R>,
+	<C as Contract>::WithPostInfo<<C as Contract>::Error>,
+>;
 
 /// Contract configuration
 pub trait Contract {
@@ -236,15 +244,19 @@ pub trait Contract {
 	/// Wrapper for Result Ok/Err value
 	type WithPostInfo<T>;
 	/// Return value of [`Callable`], expected to be of [`core::result::Result`] type
-	type Result<T>;
+	type Result<T, E>;
 
 	/// Map WithPostInfo value
 	fn map_post<I, O>(
 		v: Self::WithPostInfo<I>,
 		mapper: impl FnOnce(I) -> O,
 	) -> Self::WithPostInfo<O>;
+	/// Wrap value with default post info
+	fn with_default_post<T>(v: T) -> Self::WithPostInfo<T>;
 }
 
+/// Example of PostInfo, used in tests
+pub struct DummyPost<T>(pub T);
 /// Implement dummy Contract trait, used for tests
 /// Allows contract methods to return either T, or Result<T, String> for any T
 #[macro_export]
@@ -257,21 +269,22 @@ macro_rules! dummy_contract {
 		/// This macro uses autoref specialization technique, described here: https://github.com/dtolnay/case-studies/blob/master/autoref-specialization/README.md
 		macro_rules! $res {
 			($i:expr) => {{
+				use ::evm_coder::DummyPost;
 				struct Wrapper<T>(core::cell::Cell<Option<T>>);
-				type O<T> = ::core::result::Result<T, String>;
+				type O<T> = ::core::result::Result<DummyPost<T>, DummyPost<String>>;
 				trait Matcher<T> {
 					fn convert(&self) -> O<T>;
 				}
 				impl<T> Matcher<T> for &Wrapper<::core::result::Result<T, String>> {
 					fn convert(&self) -> O<T> {
 						let i = self.0.take().unwrap();
-						i
+						i.map(DummyPost).map_err(DummyPost)
 					}
 				}
 				impl<T> Matcher<T> for Wrapper<T> {
 					fn convert(&self) -> O<T> {
 						let i = self.0.take().unwrap();
-						Ok(i)
+						Ok(DummyPost(i))
 					}
 				}
 				(&&Wrapper(core::cell::Cell::new(Some($i)))).convert()
@@ -279,10 +292,14 @@ macro_rules! dummy_contract {
 		}
 		impl $(<$($gen),+>)? $crate::Contract for $ty {
 			type Error = String;
-			type WithPostInfo<RR> = RR;
-			type Result<RR> = core::result::Result<Self::WithPostInfo<RR>, Self::Error>;
+			type WithPostInfo<RR> = $crate::DummyPost<RR>;
+			type Result<RR, EE> = core::result::Result<RR, EE>;
 			fn map_post<II, OO>(v: Self::WithPostInfo<II>, mapper: impl FnOnce(II) -> OO) -> Self::WithPostInfo<OO> {
-				mapper(v)
+				$crate::DummyPost(mapper(v.0))
+			}
+			/// Wrap value with default post info
+			fn with_default_post<TT>(v: TT) -> Self::WithPostInfo<TT> {
+				$crate::DummyPost(v)
 			}
 		}
 	};
