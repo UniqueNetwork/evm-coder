@@ -1,4 +1,4 @@
-use evm_coder::{types::*, solidity_interface, dummy_contract};
+use evm_coder::{dummy_contract, solidity_interface, types::*};
 
 type Result<T> = core::result::Result<T, String>;
 

@@ -16,7 +16,7 @@
 
 #![allow(dead_code)] // This test only checks that macros is not panicking
 
-use evm_coder::{abi::AbiType, ToLog, solidity_interface, types::*, dummy_contract};
+use evm_coder::{abi::AbiType, dummy_contract, solidity_interface, types::*, ToLog};
 use primitive_types::U256;
 
 type Result<T> = core::result::Result<T, String>;

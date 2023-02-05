@@ -1,11 +1,10 @@
-use crate::{
-	abi::{AbiRead, AbiWrite},
-	types::*,
-};
-
-use super::{AbiReader, AbiWriter};
 use hex_literal::hex;
 use primitive_types::{H160, U256};
+
+use crate::{
+	abi::{AbiRead, AbiReader, AbiWrite, AbiWriter},
+	types::*,
+};
 
 fn test_impl<T>(function_identifier: u32, decoded_data: T, encoded_data: &[u8])
 where

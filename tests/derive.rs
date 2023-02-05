@@ -1,5 +1,5 @@
-use evm_coder::{dummy_contract, solidity_interface};
 use derivative::Derivative;
+use evm_coder::{dummy_contract, solidity_interface};
 
 type Result<T> = core::result::Result<T, String>;
 

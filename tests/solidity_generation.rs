@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
-use evm_coder::{abi::AbiType, generate_stubgen, solidity_interface, types::*, dummy_contract};
+use evm_coder::{abi::AbiType, dummy_contract, generate_stubgen, solidity_interface, types::*};
 use primitive_types::U256;
 
 type Result<T> = core::result::Result<T, String>;

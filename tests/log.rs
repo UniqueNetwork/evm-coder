@@ -16,7 +16,7 @@
 
 #![allow(dead_code)]
 
-use evm_coder::{ToLog, types::*};
+use evm_coder::{types::*, ToLog};
 use primitive_types::U256;
 
 #[derive(ToLog)]

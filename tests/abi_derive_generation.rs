@@ -1,6 +1,6 @@
 mod test_struct {
-	use evm_coder_procedural::AbiCoder;
 	use evm_coder::types::Bytes;
+	use evm_coder_procedural::AbiCoder;
 
 	#[test]
 	fn empty_struct() {

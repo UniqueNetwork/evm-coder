@@ -28,6 +28,9 @@ pub use events::{ToLog, ToTopic};
 #[macro_use]
 pub mod custom_signature;
 
+/// Reexported for macro
+#[doc(hidden)]
+pub use ethereum;
 /// Derives call enum implementing [`crate::Callable`] and [`crate::Call`] from impl block.
 ///
 /// ## Macro syntax
@@ -78,7 +81,6 @@ pub mod custom_signature;
 /// }
 /// ```
 pub use evm_coder_procedural::solidity_interface;
-
 /// Macro to include support for structures and enums in Solidity.
 ///
 /// ### Overview
@@ -119,11 +121,6 @@ pub use evm_coder_procedural::solidity_interface;
 /// }
 /// ```
 pub use evm_coder_procedural::AbiCoder;
-pub use sha3_const;
-
-/// macro reexports
-pub use ethereum;
-
 /// Derives [`ToLog`] for enum
 ///
 /// Selectors will be derived from variant names, there is currently no way to have custom naming
@@ -132,6 +129,9 @@ pub use ethereum;
 /// `#[indexed]`
 /// Marks this field as indexed, so it will appear in [`ethereum::Log`] topics instead of data
 pub use evm_coder_procedural::ToLog;
+/// Reexported for macro
+#[doc(hidden)]
+pub use sha3_const;
 
 // Api of those modules shouldn't be consumed directly, it is only exported for usage in proc macros
 #[doc(hidden)]
@@ -157,7 +157,8 @@ pub mod types {
 
 	#[cfg(not(feature = "std"))]
 	use alloc::vec::Vec;
-	use primitive_types::{U256, H160, H256};
+
+	use primitive_types::{H160, H256, U256};
 
 	pub type Address = H160;
 	pub type Bytes4 = [u8; 4];

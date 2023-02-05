@@ -1,7 +1,12 @@
-use super::{TypeCollector, SolidityTypeName, SolidityTupleTy};
-use crate::{sealed, types::*};
 use core::fmt;
-use primitive_types::{U256, H160};
+
+use primitive_types::{H160, U256};
+
+use crate::{
+	sealed,
+	solidity::{SolidityTupleTy, SolidityTypeName, TypeCollector},
+	types::*,
+};
 
 macro_rules! solidity_type_name {
     ($($ty:ty => $name:literal $simple:literal = $default:literal),* $(,)?) => {

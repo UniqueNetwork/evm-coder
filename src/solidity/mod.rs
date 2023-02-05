@@ -26,17 +26,19 @@ pub use traits::*;
 mod impls;
 
 #[cfg(not(feature = "std"))]
-use alloc::{vec::Vec, collections::BTreeMap, format};
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
+use alloc::{collections::BTreeMap, format, vec::Vec};
 use core::{
-	fmt::{self, Write},
-	marker::PhantomData,
 	cell::{Cell, RefCell},
 	cmp::Reverse,
+	fmt::{self, Write},
+	marker::PhantomData,
 };
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
+
 use impl_trait_for_tuples::impl_for_tuples;
-use crate::{types::*, custom_signature::SignatureUnit};
+
+use crate::{custom_signature::SignatureUnit, types::*};
 
 #[derive(Default)]
 pub struct TypeCollector {

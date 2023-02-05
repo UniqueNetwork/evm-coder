@@ -207,10 +207,10 @@ macro_rules! make_signature {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 	use core::str::from_utf8;
 
-	use super::{SIGNATURE_SIZE_LIMIT, SignatureUnit};
+	use super::{SignatureUnit, SIGNATURE_SIZE_LIMIT};
 
 	trait Name {
 		const NAME: SignatureUnit;

@@ -17,7 +17,7 @@
 //! Implementation of EVM RLP reader/writer
 
 mod traits;
-use core::{result, fmt};
+use core::{fmt, result};
 
 pub use traits::*;
 mod impls;
@@ -27,9 +27,10 @@ mod test;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+
 use primitive_types::{H160, U256};
 
-use crate::{types::*};
+use crate::types::*;
 
 /// Aligment for every simple type in bytes.
 pub const ABI_ALIGNMENT: usize = 32;

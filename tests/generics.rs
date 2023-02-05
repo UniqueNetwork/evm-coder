@@ -15,7 +15,8 @@
 // along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
 
 use std::marker::PhantomData;
-use evm_coder::{generate_stubgen, solidity_interface, types::*, dummy_contract};
+
+use evm_coder::{dummy_contract, generate_stubgen, solidity_interface, types::*};
 use primitive_types::U256;
 
 type Result<T> = core::result::Result<T, String>;

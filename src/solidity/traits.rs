@@ -1,5 +1,6 @@
-use super::TypeCollector;
 use core::fmt;
+
+use crate::solidity::TypeCollector;
 
 pub trait SolidityTypeName: 'static {
 	fn solidity_name(writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result;
