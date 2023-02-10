@@ -92,9 +92,12 @@ impl TypeCollector {
 		data.into_iter().map(|(code, _)| code).collect()
 	}
 }
-#[derive(Default)]
 pub struct UnnamedArgument<T>(PhantomData<*const T>);
-
+impl<T> Default for UnnamedArgument<T> {
+	fn default() -> Self {
+		Self(PhantomData)
+	}
+}
 impl<T: SolidityTypeName> SolidityArguments for UnnamedArgument<T> {
 	fn solidity_name(&self, writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		if !T::is_void() {
