@@ -54,6 +54,21 @@ impl SolidityTypeName for () {
 	}
 }
 
+impl<T: SolidityTypeName, E: 'static> SolidityTypeName for Result<T, E> {
+	fn solidity_name(writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
+		T::solidity_name(writer, tc)
+	}
+	fn is_simple() -> bool {
+		T::is_simple()
+	}
+	fn solidity_default(writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
+		T::solidity_default(writer, tc)
+	}
+	fn is_void() -> bool {
+		T::is_void()
+	}
+}
+
 impl<T: SolidityTypeName + sealed::CanBePlacedInVec> SolidityTypeName for Vec<T> {
 	fn solidity_name(writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		T::solidity_name(writer, tc)?;
