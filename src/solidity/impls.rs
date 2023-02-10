@@ -153,7 +153,7 @@ impl<T: SolidityTypeName + 'static> SolidityTypeName for Option<T> {
 	fn solidity_default(writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		write!(writer, "{}(", tc.collect_struct::<Self>())?;
 		bool::solidity_default(writer, tc)?;
-		write!(writer, ", ");
+		write!(writer, ", ")?;
 		T::solidity_default(writer, tc)?;
 		write!(writer, ")")
 	}
@@ -163,7 +163,7 @@ impl<T: SolidityTypeName> super::SolidityStructTy for Option<T> {
 	fn generate_solidity_interface(tc: &TypeCollector) -> String {
 		let mut solidity_name = "Option".to_string();
 		let mut generic_name = String::new();
-		T::solidity_name(&mut generic_name, tc);
+		T::solidity_name(&mut generic_name, tc).unwrap();
 		solidity_name.push(
 			generic_name
 				.chars()
