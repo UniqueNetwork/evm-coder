@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 
 <!-- bureaucrate goes here -->
+## [v0.3.1] 2023-02-10
+
+### Added features
+
+- Impl SolidityTypeName for Result a331f9605f0a063121c8f0c32f90bc2e8efe4ea4
+
+### Bugfixes
+
+- Remove Default bound on UnnamedArgument a19009d12bba22cd85aab5807e41377bb2d50c5c
+
+### Other changes
+
+- style: Fix clippy warnings b585dc3d01253631989139159d2a618b8de798a0
+
 ## [v0.3.0] 2023-02-02
 
 ### Added features
