@@ -1,9 +1,11 @@
 [package]
+description = "Implementation of proc-macro for evm-coder"
+documentation.workspace = true
 edition = "2021"
 license.workspace = true
 name = "evm-coder-procedural"
+repository.workspace = true
 version.workspace = true
-description = "Implementation of proc-macro for evm-coder"
 
 [lib]
 proc-macro = true

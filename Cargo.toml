@@ -1,17 +1,21 @@
 [workspace]
 members = ['./procedural']
-package.license = "MIT"
-package.version = "0.3.2"
+package.documentation = "https://docs.rs/evm-coder"
+package.license = "MIT OR Apache-2.0"
+package.repository = "https://github.com/UniqueNetwork/evm-coder"
+package.version = "0.3.3"
 
 [workspace.dependencies]
-evm-coder-procedural = { path = "./procedural", version = "0.3.2" }
+evm-coder-procedural = { path = "./procedural", version = "0.3.3" }
 
 [package]
+description = "EVM call decoding/encoding proc macros"
+documentation.workspace = true
 edition = "2021"
 license.workspace = true
 name = "evm-coder"
+repository.workspace = true
 version.workspace = true
-description = "EVM call decoding/encoding proc macros"
 
 [dependencies]
 sha3-const = { version = "0.1.1", default-features = false }
