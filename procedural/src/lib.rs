@@ -3,8 +3,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use sha3::{Digest, Keccak256};
 use syn::{
-	parse_macro_input, spanned::Spanned, DeriveInput, Ident, ItemImpl, Pat, Path, PathArguments,
-	PathSegment, Type,
+	parse_macro_input, spanned::Spanned, DeriveInput, Ident, ItemImpl, Pat, Path, PathSegment, Type,
 };
 
 mod abi_derive;
@@ -105,7 +104,7 @@ fn parse_ident_from_pat(pat: &Pat) -> syn::Result<&Ident> {
 }
 
 fn parse_ident_from_segment(segment: &PathSegment, allow_generics: bool) -> syn::Result<&Ident> {
-	if segment.arguments != PathArguments::None && !allow_generics {
+	if !segment.arguments.is_none() && !allow_generics {
 		return Err(syn::Error::new(
 			segment.arguments.span(),
 			"unexpected generic type",

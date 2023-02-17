@@ -360,7 +360,6 @@ impl AbiTypeHelper for Type {
 	}
 }
 
-#[derive(Debug)]
 struct MethodArg {
 	name: Ident,
 	camel_name: String,
