@@ -1,5 +1,7 @@
-# evm-coder [![Latest Version]][crates.io]
+# evm-coder [![Build Status]][actions] [![Latest Version]][crates.io]
 
+[Build Status]: https://img.shields.io/github/actions/workflow/status/uniquenetwork/evm-coder/ci.yaml?branch=master
+[actions]: https://github.com/uniquenetwork/evm-coder/actions?query=branch%3Amaster
 [Latest Version]: https://img.shields.io/crates/v/evm-coder.svg
 [crates.io]: https://crates.io/crates/evm-coder
 
@@ -14,6 +16,8 @@ solidity interfaces for ethereum developers
 Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
 2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
 </sup>
+
+<br>
 
 <sub>
 Unless you explicitly state otherwise, any contribution intentionally submitted
