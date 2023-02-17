@@ -53,14 +53,11 @@ impl Event {
 		let name_lit = proc_macro2::Literal::string(name.to_string().as_str());
 		let name_screaming = snake_ident_to_screaming(name);
 
-		let named = match &variant.fields {
-			Fields::Named(named) => named,
-			_ => {
-				return Err(syn::Error::new(
-					variant.fields.span(),
-					"expected named fields",
-				))
-			}
+		let Fields::Named(named) = &variant.fields else {
+			return Err(syn::Error::new(
+				variant.fields.span(),
+				"expected named fields",
+			))
 		};
 		let mut fields = Vec::new();
 		for field in &named.named {
@@ -165,9 +162,8 @@ pub struct Events {
 impl Events {
 	pub fn try_from(data: &DeriveInput) -> syn::Result<Self> {
 		let name = &data.ident;
-		let en = match &data.data {
-			Data::Enum(en) => en,
-			_ => return Err(syn::Error::new(data.span(), "expected enum")),
+		let Data::Enum(en) = &data.data else {
+			return Err(syn::Error::new(data.span(), "expected enum"));
 		};
 		let mut events = Vec::new();
 		for variant in &en.variants {
