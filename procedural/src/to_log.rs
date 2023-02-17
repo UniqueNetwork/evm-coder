@@ -1,22 +1,6 @@
-// Copyright 2019-2022 Unique Network (Gibraltar) Ltd.
-// This file is part of Unique Network.
-
-// Unique Network is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Unique Network is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
-
 use inflector::cases;
-use syn::{Data, DeriveInput, Field, Fields, Ident, Variant, spanned::Spanned};
 use quote::quote;
+use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Variant};
 
 use crate::{parse_ident_from_path, parse_ident_from_type, snake_ident_to_screaming};
 
@@ -40,9 +24,9 @@ impl EventField {
 			}
 		}
 		Ok(Self {
-			name: name.to_owned(),
+			name: name.clone(),
 			camel_name: cases::camelcase::to_camel_case(&name.to_string()),
-			ty: ty.to_owned(),
+			ty: ty.clone(),
 			indexed,
 		})
 	}
@@ -118,7 +102,7 @@ impl Event {
 		};
 
 		Ok(Self {
-			name: name.to_owned(),
+			name: name.clone(),
 			name_screaming,
 			fields,
 			selector,
@@ -190,7 +174,7 @@ impl Events {
 			events.push(Event::try_from(variant)?);
 		}
 		Ok(Self {
-			name: name.to_owned(),
+			name: name.clone(),
 			events,
 		})
 	}

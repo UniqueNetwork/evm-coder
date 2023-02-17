@@ -4,15 +4,15 @@
 
 use std::collections::BTreeSet;
 
-use proc_macro2::TokenStream;
-use quote::{quote, format_ident};
 use inflector::cases;
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
 use syn::{
-	Expr, FnArg, Generics, Ident, ImplItem, ImplItemMethod, ItemImpl, Lit, Meta, MetaNameValue,
-	PatType, ReturnType, Type,
-	spanned::Spanned,
+	parenthesized,
 	parse::{Parse, ParseStream},
-	parenthesized, Token, LitInt, LitStr, Path, PathArguments,
+	spanned::Spanned,
+	Expr, FnArg, Generics, Ident, ImplItem, ImplItemMethod, ItemImpl, Lit, LitInt, LitStr, Meta,
+	MetaNameValue, PatType, Path, PathArguments, ReturnType, Token, Type,
 };
 
 use crate::{
@@ -67,8 +67,7 @@ impl Is {
 		let via_typ = self
 			.via
 			.as_ref()
-			.map(|(t, _)| quote! {#t})
-			.unwrap_or_else(|| quote! {Self});
+			.map_or_else(|| quote! {Self}, |(t, _)| quote! {#t});
 		let via_map = self
 			.via
 			.as_ref()
@@ -180,9 +179,8 @@ impl Parse for IsList {
 			if input.peek(Token![,]) {
 				input.parse::<Token![,]>()?;
 				continue;
-			} else {
-				break;
 			}
+			break;
 		}
 		Ok(Self(out))
 	}
@@ -444,7 +442,7 @@ enum Mutability {
 }
 
 /// Group all keywords for this macro. Usage example:
-/// #[solidity_interface(name = "B", inline_is(A))]
+/// `#[solidity_interface(name = "B", inline_is(A))]`
 mod kw {
 	syn::custom_keyword!(via);
 	syn::custom_keyword!(returns);
@@ -502,7 +500,7 @@ impl Method {
 			} else if variant_attrs.contains(ident) {
 				let path = &attr.path;
 				let tokens = &attr.tokens;
-				extra_enum_attrs.push(quote!{#path #tokens});
+				extra_enum_attrs.push(quote! {#path #tokens});
 				to_remove.push(i);
 			}
 		}
@@ -545,12 +543,12 @@ impl Method {
 		{
 			let typ = match typ {
 				FnArg::Typed(typ) => typ,
-				_ => unreachable!(),
+				FnArg::Receiver(_) => unreachable!(),
 			};
 			args.push(MethodArg::try_from(typ)?);
 		}
 
-		if mutability != Mutability::Mutable && args.iter().any(|arg| arg.is_value()) {
+		if mutability != Mutability::Mutable && args.iter().any(MethodArg::is_value) {
 			return Err(syn::Error::new(
 				args.iter().find(|arg| arg.is_value()).unwrap().ty.span(),
 				"payable function should be mutable",
@@ -559,14 +557,14 @@ impl Method {
 
 		let result = match &value.sig.output {
 			ReturnType::Type(_, ty) => ty,
-			_ => return Err(syn::Error::new(value.sig.output.span(), "interface method should return Result<value>\nif there is no value to return - specify void (which is alias to unit)")),
+			ReturnType::Default => return Err(syn::Error::new(value.sig.output.span(), "interface method should return Result<value>\nif there is no value to return - specify void (which is alias to unit)")),
 		};
 
 		let camel_name = info
 			.rename_selector
 			.unwrap_or_else(|| cases::camelcase::to_camel_case(&ident.to_string()));
 		let has_normal_args = args.iter().filter(|arg| !arg.is_special()).count() != 0;
-		let has_value_args = args.iter().any(|a| a.is_value());
+		let has_value_args = args.iter().any(MethodArg::is_value);
 
 		Ok(Self {
 			name: ident.clone(),
@@ -588,7 +586,7 @@ impl Method {
 			.args
 			.iter()
 			.filter(|a| !a.is_special())
-			.map(|a| a.expand_call_def());
+			.map(MethodArg::expand_call_def);
 		let pascal_name = &self.pascal_name;
 		let docs = &self.docs;
 		let enum_attrs = &self.enum_attrs;
@@ -646,7 +644,7 @@ impl Method {
 		if self.has_normal_args {
 			let args_iter = self.args.iter().filter(|a| !a.is_special());
 			let arg_type = args_iter.clone().map(|a| &a.ty);
-			let parsers = args_iter.map(|a| a.expand_parse());
+			let parsers = args_iter.map(MethodArg::expand_parse);
 			quote! {
 				Self::#screaming_name => {
 					let is_dynamic = false #(|| <#arg_type as ::evm_coder::abi::AbiType>::is_dynamic())*;
@@ -690,7 +688,7 @@ impl Method {
 			Mutability::Mutable | Mutability::View => quote! {self.},
 			Mutability::Pure => quote! {Self::},
 		};
-		let args = self.args.iter().map(|a| a.expand_call_arg());
+		let args = self.args.iter().map(MethodArg::expand_call_arg);
 
 		quote! {
 			#call_name::#pascal_name #matcher => {
@@ -720,12 +718,12 @@ impl Method {
 			has_params = true;
 			let ty = &arg.ty;
 			args.extend(quote! {nameof(<#ty>::SIGNATURE)});
-			args.extend(quote! {fixed(",")})
+			args.extend(quote! {fixed(",")});
 		}
 
 		// Remove trailing comma
 		if has_params {
-			args.extend(quote! {shift_left(1)})
+			args.extend(quote! {shift_left(1)});
 		}
 
 		let func_name = self.camel_name.clone();
@@ -829,7 +827,7 @@ impl SolidityInterface {
 
 		for item in &mut value.items {
 			if let ImplItem::Method(method) = item {
-				methods.push(Method::try_from(method, &info.enum_variant_attrs)?)
+				methods.push(Method::try_from(method, &info.enum_variant_attrs)?);
 			}
 		}
 		let mut docs = vec![];
@@ -846,7 +844,7 @@ impl SolidityInterface {
 				docs.push(value);
 			}
 		}
-		let mut result_macro_name = parse_path(&value.self_ty)?.to_owned();
+		let mut result_macro_name = parse_path(&value.self_ty)?.clone();
 		if let Some(last) = result_macro_name.segments.iter_mut().last() {
 			last.ident = format_ident!("{}_result", &last.ident);
 			last.arguments = PathArguments::None;
@@ -861,6 +859,8 @@ impl SolidityInterface {
 			docs,
 		})
 	}
+
+	#[allow(clippy::too_many_lines)]
 	pub fn expand(self) -> proc_macro2::TokenStream {
 		let name = self.name;
 

@@ -1,4 +1,5 @@
 //! Implementation of EVM RLP reader/writer
+#![allow(clippy::missing_errors_doc)]
 
 mod traits;
 use core::{fmt, result};
@@ -14,7 +15,7 @@ use alloc::vec::Vec;
 
 use primitive_types::{H160, U256};
 
-use crate::types::*;
+use crate::types::{Bytes4, String};
 
 /// Aligment for every simple type in bytes.
 pub const ABI_ALIGNMENT: usize = 32;
@@ -49,6 +50,7 @@ impl From<&'static str> for Error {
 
 /// View into RLP data, which provides method to read typed items from it
 #[derive(Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct AbiReader<'i> {
 	buf: &'i [u8],
 	subresult_offset: usize,
@@ -56,6 +58,7 @@ pub struct AbiReader<'i> {
 }
 impl<'i> AbiReader<'i> {
 	/// Start reading RLP buffer, assuming there is no padding bytes
+	#[must_use]
 	pub fn new(buf: &'i [u8]) -> Self {
 		Self {
 			buf,
@@ -63,7 +66,12 @@ impl<'i> AbiReader<'i> {
 			offset: 0,
 		}
 	}
+
 	/// Start reading RLP buffer, parsing first 4 bytes as selector
+	///
+	/// # Errors
+	///
+	/// Fails if provided buffer has not enough length for selector+data
 	pub fn new_call(buf: &'i [u8]) -> Result<(Bytes4, Self)> {
 		if buf.len() < 4 {
 			return Err(Error::OutOfOffset);
@@ -196,6 +204,10 @@ impl<'i> AbiReader<'i> {
 
 	/// Slice recursive buffer, advance one word for buffer offset
 	/// If `size` is [`None`] then offsets evals from internal buffer.
+	///
+	/// # Errors
+	///
+	/// Fails on bad subresult offset
 	pub fn subresult(&mut self, size: Option<usize>) -> Result<AbiReader<'i>> {
 		let subresult_offset = self.subresult_offset;
 		let offset = if let Some(size) = size {
@@ -223,6 +235,7 @@ impl<'i> AbiReader<'i> {
 	}
 
 	/// Is this parser reached end of buffer?
+	#[must_use]
 	pub fn is_finished(&self) -> bool {
 		self.buf.len() == self.offset
 	}
@@ -230,6 +243,7 @@ impl<'i> AbiReader<'i> {
 
 /// Writer for RLP encoded data
 #[derive(Default)]
+#[allow(clippy::module_name_repetitions)]
 pub struct AbiWriter {
 	static_part: Vec<u8>,
 	dynamic_part: Vec<(usize, AbiWriter)>,
@@ -238,11 +252,13 @@ pub struct AbiWriter {
 }
 impl AbiWriter {
 	/// Initialize internal buffers for output data, assuming no padding required
+	#[must_use]
 	pub fn new() -> Self {
 		Self::default()
 	}
 
 	/// Initialize internal buffers with data size
+	#[must_use]
 	pub fn new_dynamic(is_dynamic: bool) -> Self {
 		Self {
 			is_dynamic,
@@ -250,6 +266,7 @@ impl AbiWriter {
 		}
 	}
 	/// Initialize internal buffers, inserting method selector at beginning
+	#[must_use]
 	pub fn new_call(method_id: u32) -> Self {
 		let mut val = Self::new();
 		val.static_part.extend(method_id.to_be_bytes());
@@ -273,45 +290,45 @@ impl AbiWriter {
 
 	/// Write [`H160`] to end of buffer
 	pub fn address(&mut self, address: &H160) {
-		self.write_padleft(&address.0)
+		self.write_padleft(&address.0);
 	}
 
 	/// Write [`bool`] to end of buffer
 	pub fn bool(&mut self, value: &bool) {
-		self.write_padleft(&[u8::from(*value)])
+		self.write_padleft(&[u8::from(*value)]);
 	}
 
 	/// Write [`u8`] to end of buffer
 	pub fn uint8(&mut self, value: &u8) {
-		self.write_padleft(&[*value])
+		self.write_padleft(&[*value]);
 	}
 
 	/// Write [`u32`] to end of buffer
 	pub fn uint32(&mut self, value: &u32) {
-		self.write_padleft(&u32::to_be_bytes(*value))
+		self.write_padleft(&u32::to_be_bytes(*value));
 	}
 
 	/// Write [`u64`] to end of buffer
 	pub fn uint64(&mut self, value: &u64) {
-		self.write_padleft(&u64::to_be_bytes(*value))
+		self.write_padleft(&u64::to_be_bytes(*value));
 	}
 
 	/// Write [`u128`] to end of buffer
 	pub fn uint128(&mut self, value: &u128) {
-		self.write_padleft(&u128::to_be_bytes(*value))
+		self.write_padleft(&u128::to_be_bytes(*value));
 	}
 
 	/// Write [`U256`] to end of buffer
 	pub fn uint256(&mut self, value: &U256) {
 		let mut out = [0; 32];
 		value.to_big_endian(&mut out);
-		self.write_padleft(&out)
+		self.write_padleft(&out);
 	}
 
 	/// Write [`usize`] to end of buffer
 	#[deprecated = "dangerous, as usize may have different width in wasm and native execution"]
 	pub fn write_usize(&mut self, value: &usize) {
-		self.write_padleft(&usize::to_be_bytes(*value))
+		self.write_padleft(&usize::to_be_bytes(*value));
 	}
 
 	/// Append recursive data, writing pending offset at end of buffer
@@ -323,7 +340,7 @@ impl AbiWriter {
 
 	fn memory(&mut self, value: &[u8]) {
 		let mut sub = Self::new();
-		sub.uint32(&(value.len() as u32));
+		sub.uint32(&u32::try_from(value.len()).expect("only 32bit array length is supported"));
 		for chunk in value.chunks(ABI_ALIGNMENT) {
 			sub.write_padright(chunk);
 		}
@@ -332,15 +349,16 @@ impl AbiWriter {
 
 	/// Append recursive [`str`] at end of buffer
 	pub fn string(&mut self, value: &str) {
-		self.memory(value.as_bytes())
+		self.memory(value.as_bytes());
 	}
 
 	/// Append recursive [`[u8]`] at end of buffer
 	pub fn bytes(&mut self, value: &[u8]) {
-		self.memory(value)
+		self.memory(value);
 	}
 
 	/// Finish writer, concatenating all internal buffers
+	#[must_use]
 	pub fn finish(mut self) -> Vec<u8> {
 		for (static_offset, part) in self.dynamic_part {
 			let part_offset = self.static_part.len()
@@ -351,7 +369,7 @@ impl AbiWriter {
 			let start = static_offset + ABI_ALIGNMENT - encoded_dynamic_offset.len();
 			let stop = static_offset + ABI_ALIGNMENT;
 			self.static_part[start..stop].copy_from_slice(&encoded_dynamic_offset);
-			self.static_part.extend(part.finish())
+			self.static_part.extend(part.finish());
 		}
 		self.static_part
 	}

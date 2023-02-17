@@ -3,8 +3,8 @@ use proc_macro::TokenStream;
 use quote::quote;
 use sha3::{Digest, Keccak256};
 use syn::{
-	DeriveInput, Ident, ItemImpl, Pat, Path, PathArguments, PathSegment, Type, parse_macro_input,
-	spanned::Spanned,
+	parse_macro_input, spanned::Spanned, DeriveInput, Ident, ItemImpl, Pat, Path, PathArguments,
+	PathSegment, Type,
 };
 
 mod abi_derive;
@@ -125,7 +125,7 @@ fn parse_ident_from_type(ty: &Type, allow_generics: bool) -> syn::Result<&Ident>
 }
 
 fn pascal_ident_to_call(ident: &Ident) -> Ident {
-	let name = format!("{}Call", ident);
+	let name = format!("{ident}Call");
 	Ident::new(&name, ident.span())
 }
 fn snake_ident_to_pascal(ident: &Ident) -> Ident {
@@ -177,7 +177,7 @@ pub fn to_log(value: TokenStream) -> TokenStream {
 /// See documentation for this proc-macro reexported in `evm-coder` crate
 #[proc_macro_derive(AbiCoder)]
 pub fn abi_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-	let ast = syn::parse(input).unwrap();
+	let ast = parse_macro_input!(input as DeriveInput);
 	let ts = match abi_derive::impl_abi_macro(&ast) {
 		Ok(e) => e,
 		Err(e) => e.to_compile_error(),

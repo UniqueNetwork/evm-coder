@@ -1,7 +1,7 @@
 use ethereum::Log;
 use primitive_types::{H160, H256, U256};
 
-use crate::types::*;
+use crate::types::Address;
 
 /// Implementation of this trait should not be written manually,
 /// instead use [`crate::ToLog`] proc macros.

@@ -2,7 +2,7 @@ use core::str::from_utf8;
 
 use crate::{
 	abi::{AbiReader, AbiWriter, Result},
-	custom_signature::*,
+	custom_signature::SignatureUnit,
 };
 
 /// Helper for type.
@@ -11,6 +11,7 @@ pub trait AbiType {
 	const SIGNATURE: SignatureUnit;
 
 	/// Signature as str.
+	#[must_use]
 	fn as_str() -> &'static str {
 		from_utf8(&Self::SIGNATURE.data[..Self::SIGNATURE.len]).expect("bad utf-8")
 	}
@@ -25,6 +26,10 @@ pub trait AbiType {
 /// [`AbiReader`] implements reading of many types.
 pub trait AbiRead {
 	/// Read item from current position, advanding decoder
+	///
+	/// # Errors
+	///
+	/// Value is not decodeable, or is invalid for the target type
 	fn abi_read(reader: &mut AbiReader) -> Result<Self>
 	where
 		Self: Sized;

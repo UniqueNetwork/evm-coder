@@ -4,10 +4,13 @@ use alloc::vec::Vec;
 use primitive_types::{H160, U256};
 
 use crate::{
-	abi::{traits::*, AbiReader, AbiWriter, Result, ABI_ALIGNMENT},
+	abi::{
+		traits::{AbiRead, AbiType, AbiWrite},
+		AbiReader, AbiWriter, Result, ABI_ALIGNMENT,
+	},
 	custom_signature::SignatureUnit,
 	make_signature, sealed,
-	types::*,
+	types::{Bytes, Bytes4, String},
 };
 
 macro_rules! impl_abi_type {
@@ -77,7 +80,7 @@ impl AbiRead for Bytes {
 
 impl AbiWrite for Bytes {
 	fn abi_write(&self, writer: &mut AbiWriter) {
-		writer.bytes(self.0.as_slice())
+		writer.bytes(self.0.as_slice());
 	}
 }
 
@@ -145,7 +148,9 @@ impl<T: AbiWrite + AbiType> AbiWrite for Vec<T> {
 		};
 
 		// Write items count
-		(self.len() as u32).abi_write(&mut sub);
+		u32::try_from(self.len())
+			.expect("only 32bit array length is supported")
+			.abi_write(&mut sub);
 
 		for item in self {
 			item.abi_write(&mut sub);

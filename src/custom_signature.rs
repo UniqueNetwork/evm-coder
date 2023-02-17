@@ -77,7 +77,8 @@ pub struct SignatureUnit {
 }
 
 impl SignatureUnit {
-	/// Create a signature from `&str'.
+	/// Create a signature from `&str`.
+	#[must_use]
 	pub const fn new(name: &'static str) -> SignatureUnit {
 		let mut signature = [0_u8; SIGNATURE_SIZE_LIMIT];
 		let name = name.as_bytes();
@@ -90,6 +91,7 @@ impl SignatureUnit {
 		}
 	}
 	/// String conversion
+	#[must_use]
 	pub fn as_str(&self) -> Option<&str> {
 		core::str::from_utf8(&self.data[0..self.len]).ok()
 	}

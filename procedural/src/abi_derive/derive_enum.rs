@@ -1,9 +1,9 @@
 use quote::quote;
 
-use super::extract_docs;
+use super::{derive_struct::impl_can_be_placed_in_vec, extract_docs};
 
 pub fn impl_solidity_option<'a>(
-	docs: Vec<String>,
+	docs: &[String],
 	name: &proc_macro2::Ident,
 	enum_options: impl Iterator<Item = &'a syn::Variant> + Clone,
 ) -> proc_macro2::TokenStream {
@@ -57,11 +57,11 @@ pub fn impl_enum_from_u8<'a>(
 	name: &proc_macro2::Ident,
 	enum_options: impl Iterator<Item = &'a syn::Variant>,
 ) -> proc_macro2::TokenStream {
-	let error_str = format!("Value not convertible into enum \"{name}\"");
+	let error_str = format!("value not convertible into enum \"{name}\"");
 	let error_str = proc_macro2::Literal::string(&error_str);
 	let enum_options = enum_options.enumerate().map(|(i, opt)| {
 		let opt = &opt.ident;
-		let n = proc_macro2::Literal::u8_suffixed(i as u8);
+		let n = proc_macro2::Literal::u8_suffixed(u8::try_from(i).expect("checked can cast"));
 		quote! {#n => Ok(#name::#opt),}
 	});
 
@@ -196,4 +196,33 @@ fn check_meta_u8(meta: &syn::Meta) -> Result<(), syn::Error> {
 		}
 	}
 	Ok(())
+}
+
+pub fn expand_enum(
+	de: &syn::DataEnum,
+	ast: &syn::DeriveInput,
+) -> syn::Result<proc_macro2::TokenStream> {
+	let name = &ast.ident;
+	check_repr_u8(name, &ast.attrs)?;
+	check_enum_fields(de)?;
+	let docs = extract_docs(&ast.attrs)?;
+	let enum_options = de.variants.iter();
+
+	let from = impl_enum_from_u8(name, enum_options.clone());
+	let solidity_option = impl_solidity_option(&docs, name, enum_options.clone());
+	let can_be_plcaed_in_vec = impl_can_be_placed_in_vec(name);
+	let abi_type = impl_enum_abi_type(name);
+	let abi_read = impl_enum_abi_read(name);
+	let abi_write = impl_enum_abi_write(name);
+	let solidity_type_name = impl_enum_solidity_type_name(name);
+
+	Ok(quote! {
+		#from
+		#solidity_option
+		#can_be_plcaed_in_vec
+		#abi_type
+		#abi_read
+		#abi_write
+		#solidity_type_name
+	})
 }
