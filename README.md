@@ -1,16 +1,22 @@
-# evm-coder
+# evm-coder [![Latest Version]][crates.io]
+
+[Latest Version]: https://img.shields.io/crates/v/evm-coder.svg
+[crates.io]: https://crates.io/crates/evm-coder
 
 Library for seamless call translation between Rust and Solidity code
 
 By encoding solidity definitions in Rust, this library also provides generation of
 solidity interfaces for ethereum developers
 
-## Overview
+#### License
 
-Most of this library functionality shouldn't be used directly, but via macros
+<sup>
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
+2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
+</sup>
 
-- [`solidity_interface`]
-- [`ToLog`]
-- [`AbiCoder`]
-
-<!-- TODO: make links useable on github, by publishing crate to docs.rs, and linking it from here instead -->
+<sub>
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in evm-coder by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
+</sub>

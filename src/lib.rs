@@ -1,20 +1,18 @@
-// Copyright 2019-2022 Unique Network (Gibraltar) Ltd.
-// This file is part of Unique Network.
+//! # evm-coder
+//!
+//! Library for seamless call translation between Rust and Solidity code
+//!
+//! By encoding solidity definitions in Rust, this library also provides generation of
+//! solidity interfaces for ethereum developers
+//!
+//! ## Overview
+//!
+//! Most of this library functionality shouldn't be used directly, but via macros
+//!
+//! - [`solidity_interface`]
+//! - [`ToLog`]
+//! - [`AbiCoder`]
 
-// Unique Network is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Unique Network is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Unique Network. If not, see <http://www.gnu.org/licenses/>.
-
-#![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 #![macro_use]
 #![cfg_attr(not(feature = "std"), no_std)]
