@@ -24,7 +24,7 @@ struct ContractHandle;
 		CustomContract,
 	)
 )]
-impl<T: Config> ContractHandle<T> {}
+impl ContractHandle{}
 ```
 Here we have described our contract named `MyContract`, which implements two interfaces `ERC721` and `CustomContract`.
 
@@ -38,9 +38,9 @@ Next, we implement the ERC721 interface:
     events(ERC721Events),           // Include events
     expect_selector = 0x80ac58cd    // Expected selector of contract (will be matched at compile time)
 )]
-impl<T: Config> ContractHandle<T> {
+impl ContractHandle {
 
-    // This docs will be included into the generated `sol` file.
+	// This docs will be included into the generated `sol` file.
 	/// @notice Count all NFTs assigned to an owner
 	/// @dev NFTs assigned to the zero address are considered invalid, and this
 	///  function throws for queries about the zero address.
@@ -54,6 +54,7 @@ impl<T: Config> ContractHandle<T> {
 		todo!()
 	}
 
+	#[solidity(rename_selector = "safeTransferFrom")]
 	fn safe_transfer_from_with_data(&mut self, from: Address, to: Address, token_id: U256, data: Bytes) -> Result<()> {
 		todo!()
 	}
@@ -83,17 +84,17 @@ impl<T: Config> ContractHandle<T> {
 	}
 }
 ```
-In this implementation of the interface, `ERC721Events` events have been included that will occur during the corresponding calls.
+In this implementation of the interface, `ERC721Events` events have been included that will occur during the corresponding calls. The `expect_selector` directive in the `solidity_interface` annotation checks the contract selector at compile time, which will prevent errors when implementing standard interfaces.
 
 Let's create events for ERC721:
 ```rust,no_run
 #[derive(ToLog)]
 pub enum ERC721Events {
-    // This docs will be included into the generated `sol` file.
+	// This docs will be included into the generated `sol` file.
 	/// @dev This emits when ownership of any NFT changes by any mechanism.
 	Transfer {
 		#[indexed]      // This field will be indexed
-        from: Address,
+		from: Address,
 		#[indexed]
 		to: Address,
 		#[indexed]
@@ -122,7 +123,7 @@ pub enum ERC721Events {
 Let's create our extension:
 ```rust,no_run
 #[solidity_interface(name = CustomContract)
-impl<T: Config> ContractHandle<T> {
+impl ContractHandle {
     #[solidity(rename_selector = "doSome")]
 	fn do_some_0(&mut self, caller: Caller, param: bool) -> Result<()> {
         todo!()
@@ -137,11 +138,34 @@ impl<T: Config> ContractHandle<T> {
 	fn do_another(&mut self, caller: Caller, param: bool) -> Result<()> {
 		todo!()
 	}
+
+	fn do_magic(&mut self, caller: Caller, param1: Enum, param2: Struct) -> Result<Option<U256>> {
+		todo!()
+	}
 }
 ```
-Three methods are presented here. The methods `do_some_0` and `do_some_1` are marked with the macro `#[solidity(rename_selector = "doSome")]`,
+The methods `do_some_0` and `do_some_1` are marked with the macro `#[solidity(rename_selector = "doSome")]`,
 which allows them to appear in the `sol` interface as a single overloaded method named `doSome`. The `do_another` method will be provided in
-`sol` file, but it will be commented out.
+`sol` file, but it will be commented out. The last `do_magic` method uses custom types, and we can do that too!
+
+Let's make our types available in *solidity* (`Option` is available by default):
+```rust,no_run
+#[derive(AbiCoder)]
+struct Struct {
+	a: u8,
+	b: String
+}
+
+#[derive(AbiCoder, Default, Clone, Copy)]
+#[repr(u8)]
+enum Enum {
+	First,
+    Second,
+    #[default]
+    Third,
+}
+```
+It's so easy, using the derive macro `AbiCoder, you can support your types.
 
 And at the end we will specify the generators of the `sol` file:
 ```
@@ -171,8 +195,27 @@ contract ERC165 is Dummy {
 	}
 }
 
+struct Struct {
+	a uint8;
+	b string;
+}
+
+enum Enum {
+	First,
+	Second,
+	Third
+}
+
+/// Optional value
+struct OptionUint256 {
+	/// Shows the status of accessibility of value
+	bool status;
+	/// Actual value if `status` is true
+	uint256 value;
+}
+
 /// @title A contract that allows you to work with collections.
-/// @dev the ERC-165 identifier for this interface is 0xf8d61b59
+/// @dev the ERC-165 identifier for this interface is 0x738a0043
 contract CustomContract is Dummy, ERC165 {
 	/// @dev EVM selector for this function is: 0x5465a527,
 	///  or in textual repr: doSome(bool)
@@ -184,7 +227,7 @@ contract CustomContract is Dummy, ERC165 {
 
 	/// @dev EVM selector for this function is: 0x58a93f40,
 	///  or in textual repr: doSome(uint8)
-	function doSome(bool param) public {
+	function doSome(uint8 param) public {
 		require(false, stub_error);
 		param;
 		dummy = 0;
@@ -197,6 +240,15 @@ contract CustomContract is Dummy, ERC165 {
 	// 	key;
 	// 	dummy = 0;
 	// }
+
+	/// @dev EVM selector for this function is: 0x8b5c1b1a,
+	///  or in textual repr: doMagic(uint8,(uint8,string))
+	function doSome(Enum param1, Struct param2) public returns (OptionUint256){
+		require(false, stub_error);
+		param;
+		dummy = 0;
+		return OptionUint256(false,0);
+	}
 }
 
 /// @dev inlined interface
