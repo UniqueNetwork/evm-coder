@@ -174,7 +174,18 @@ generate_stubgen!(gen_iface, ContractHandleCall<()>, false);
 ```
 You can now run the appropriate tests to generate the `sol` stub files using the script.
 
-As a result, we get the following `sol` file:
+The *scripts* folder contains a set of scripts for generating the interface, `sol` stub, `json abi` and the compiled contract. To do this, create the following `make` file:
+```make
+MyContract.sol:
+	PACKAGE=package-name NAME=erc::gen_iface OUTPUT=/path/to/iface/$@ $(PATH_TO_SCRIPTS)/generate_sol.sh
+	PACKAGE=package-name NAME=erc::gen_impl OUTPUT=/patch/to/stub/$@ $(PATH_TO_SCRIPTS)/generate_sol.sh
+
+MyContract: MyContract.sol
+	INPUT=/patch/to/stub/$< OUTPUT=/patch/to/compiled/contract/MyContract.raw ./.maintain/scripts/compile_stub.sh
+	INPUT=/patch/to/stub/$< OUTPUT=/patch/to/abi ./.maintain/scripts/generate_abi.sh
+```
+
+As a result, we get the following `sol` stub file:
 ```sol,no_run
 // SPDX-License-Identifier: OTHER
 // This code is automatically generated
