@@ -165,7 +165,7 @@ enum Enum {
     Third,
 }
 ```
-It's so easy, using the derive macro `AbiCoder, you can support your types.
+It's so easy to maintain your types with the `AbiCoder` derived macro.
 
 And at the end we will specify the generators of the `sol` file:
 ```
