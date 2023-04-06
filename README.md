@@ -12,8 +12,8 @@ By encoding solidity definitions in Rust, this library also provides generation 
 solidity interfaces for ethereum developers.
 
 ## Usage
-To represent a contract in Substrate, use the `solidity_interface` macro on the implementation of your structure representing your contact. If you are implementing a standard interface, such as ERC721, then using the `expect_selector` parameter you can check the correctness of the interface at compile time. There is also support for inheritance using the `is` directive.
-There is also support for function overloading using the macro `#[solidity(rename="funcName")]`.
+To represent a contract in Substrate, use the `solidity_interface` attribute on the implementation of your structure representing your contact. This attribute has several parameters that implement inheritance, interface validation at compile time, and more.
+There is also support for function overloading using the atribute `#[solidity(rename="funcName")]`.
 
 ## Installation
 Add to `Cargo.toml` following lines:
