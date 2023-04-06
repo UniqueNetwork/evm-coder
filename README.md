@@ -13,8 +13,14 @@ solidity interfaces for ethereum developers
 ### Example
 In this example, we are implementing a contract with ERC721 support and an additional extension interface.
 
-First of all, let's define the interface of our contract:
-```rust, no_run
+First, let's add `evm-coder` to the project:
+```toml
+[dependencies]
+evm-coder = "0.3.4"
+```
+
+Now let's define the interface of our contract:
+```rust
 struct ContractHandle;
 
 #[solidity_interface(
@@ -167,12 +173,11 @@ enum Enum {
 ```
 It's so easy to maintain your types with the `AbiCoder` derived macro.
 
-And at the end we will specify the generators of the `sol` file:
-```
+And at the end we will specify the generators of the `sol` files:
+```rust
 generate_stubgen!(gen_impl, ContractHandleCall<()>, true);
 generate_stubgen!(gen_iface, ContractHandleCall<()>, false);
 ```
-You can now run the appropriate tests to generate the `sol` stub files using the script.
 
 The *scripts* folder contains a set of scripts for generating the interface, `sol` stub, `json abi` and the compiled contract. To do this, create the following `make` file:
 ```make
