@@ -5,21 +5,27 @@
 [Latest Version]: https://img.shields.io/crates/v/evm-coder.svg
 [crates.io]: https://crates.io/crates/evm-coder
 
-Library for seamless call translation between Rust and Solidity code
+## Overview
+Library for seamless call translation between Rust and Solidity code.
 
 By encoding solidity definitions in Rust, this library also provides generation of
-solidity interfaces for ethereum developers
+solidity interfaces for ethereum developers.
 
-### Example
-In this example, we are implementing a contract with ERC721 support and an additional extension interface.
+## Usage
+To represent a contract in Substrate, use the `solidity_interface` macro on the implementation of your structure representing your contact. If you are implementing a standard interface, such as ERC721, then using the `expect_selector` parameter you can check the correctness of the interface at compile time. There is also support for inheritance using the `is` directive.
+There is also support for function overloading using the macro `#[solidity(rename="funcName")]`.
 
-First, let's add `evm-coder` to the project:
+## Installation
+Add to `Cargo.toml` following lines:
 ```toml
 [dependencies]
 evm-coder = "0.3.4"
 ```
 
-Now let's define the interface of our contract:
+## Example
+In this example, we are implementing a contract with ERC721 support and an additional extension interface.
+
+Let's define the interface of our contract:
 ```rust
 struct ContractHandle;
 
@@ -35,7 +41,7 @@ impl ContractHandle{}
 Here we have described our contract named `MyContract`, which implements two interfaces `ERC721` and `CustomContract`.
 
 Next, we implement the ERC721 interface:
-```rust, no_run
+```rust
 // This docs will be included into the generated `sol` file.
 /// @title ERC-721 Non-Fungible Token Standard
 /// @dev See https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
@@ -93,7 +99,7 @@ impl ContractHandle {
 In this implementation of the interface, `ERC721Events` events have been included that will occur during the corresponding calls. The `expect_selector` directive in the `solidity_interface` annotation checks the contract selector at compile time, which will prevent errors when implementing standard interfaces.
 
 Let's create events for ERC721:
-```rust,no_run
+```rust
 #[derive(ToLog)]
 pub enum ERC721Events {
 	// This docs will be included into the generated `sol` file.
@@ -127,7 +133,7 @@ pub enum ERC721Events {
 ```
 
 Let's create our extension:
-```rust,no_run
+```rust
 #[solidity_interface(name = CustomContract)
 impl ContractHandle {
     #[solidity(rename_selector = "doSome")]
@@ -155,7 +161,7 @@ which allows them to appear in the `sol` interface as a single overloaded method
 `sol` file, but it will be commented out. The last `do_magic` method uses custom types, and we can do that too!
 
 Let's make our types available in *solidity* (`Option` is available by default):
-```rust,no_run
+```rust
 #[derive(AbiCoder)]
 struct Struct {
 	a: u8,
@@ -191,7 +197,7 @@ MyContract: MyContract.sol
 ```
 
 As a result, we get the following `sol` stub file:
-```sol,no_run
+```sol
 // SPDX-License-Identifier: OTHER
 // This code is automatically generated
 
@@ -392,17 +398,10 @@ contract MyContract is
 
 ```
 
-### License
-
-<sup>
+## License
 Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
 2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
-</sup>
 
-<br>
-
-<sub>
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in evm-coder by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
-</sub>
