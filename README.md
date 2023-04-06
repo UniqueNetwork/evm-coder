@@ -196,7 +196,7 @@ MyContract: MyContract.sol
 	INPUT=/patch/to/stub/$< OUTPUT=/patch/to/abi ./.maintain/scripts/generate_abi.sh
 ```
 
-As a result, we get the following `sol` stub file:
+As a result, we get the following `sol` interface file:
 ```sol
 // SPDX-License-Identifier: OTHER
 // This code is automatically generated
@@ -205,16 +205,10 @@ pragma solidity >=0.8.0 <0.9.0;
 
 /// @dev common stubs holder
 contract Dummy {
-	uint8 dummy;
-	string stub_error = "this contract is implemented in native";
 }
 
 contract ERC165 is Dummy {
-	function supportsInterface(bytes4 interfaceID) external view returns (bool) {
-		require(false, stub_error);
-		interfaceID;
-		return true;
-	}
+	function supportsInterface(bytes4 interfaceID) external view returns (bool);
 }
 
 struct Struct {
@@ -241,36 +235,19 @@ struct OptionUint256 {
 contract CustomContract is Dummy, ERC165 {
 	/// @dev EVM selector for this function is: 0x5465a527,
 	///  or in textual repr: doSome(bool)
-	function doSome(bool param) public {
-		require(false, stub_error);
-		param;
-		dummy = 0;
-	}
+	function doSome(bool param) public;
 
 	/// @dev EVM selector for this function is: 0x58a93f40,
 	///  or in textual repr: doSome(uint8)
-	function doSome(uint8 param) public {
-		require(false, stub_error);
-		param;
-		dummy = 0;
-	}
+	function doSome(uint8 param) public;
 
 	// /// @dev EVM selector for this function is: 0xf41a813e,
 	// ///  or in textual repr: doAnother(bool)
-	// function doAnother(bool param) public {
-	// 	require(false, stub_error);
-	// 	key;
-	// 	dummy = 0;
-	// }
+	// function doAnother(bool param) public;
 
 	/// @dev EVM selector for this function is: 0x8b5c1b1a,
 	///  or in textual repr: doMagic(uint8,(uint8,string))
-	function doSome(Enum param1, Struct param2) public returns (OptionUint256){
-		require(false, stub_error);
-		param;
-		dummy = 0;
-		return OptionUint256(false,0);
-	}
+	function doSome(Enum param1, Struct param2) public returns (OptionUint256);
 }
 
 /// @dev inlined interface
@@ -291,21 +268,11 @@ contract ERC721 is Dummy, ERC165, ERC721Events {
 	/// @return The number of NFTs owned by `owner`, possibly zero
 	/// @dev EVM selector for this function is: 0x70a08231,
 	///  or in textual repr: balanceOf(address)
-	function balanceOf(address owner) public view returns (uint256) {
-		require(false, stub_error);
-		owner;
-		dummy;
-		return 0;
-	}
+	function balanceOf(address owner) public view returns (uint256);
 
 	/// @dev EVM selector for this function is: 0x6352211e,
 	///  or in textual repr: ownerOf(uint256)
-	function ownerOf(uint256 tokenId) public view returns (address) {
-		require(false, stub_error);
-		tokenId;
-		dummy;
-		return 0x0000000000000000000000000000000000000000;
-	}
+	function ownerOf(uint256 tokenId) public view returns (address);
 
 	/// @dev EVM selector for this function is: 0xb88d4fde,
 	///  or in textual repr: safeTransferFrom(address,address,uint256,bytes)
@@ -314,14 +281,7 @@ contract ERC721 is Dummy, ERC165, ERC721Events {
 		address to,
 		uint256 tokenId,
 		bytes memory data
-	) public {
-		require(false, stub_error);
-		from;
-		to;
-		tokenId;
-		data;
-		dummy = 0;
-	}
+	) public;
 
 	/// @dev EVM selector for this function is: 0x42842e0e,
 	///  or in textual repr: safeTransferFrom(address,address,uint256)
@@ -329,13 +289,7 @@ contract ERC721 is Dummy, ERC165, ERC721Events {
 		address from,
 		address to,
 		uint256 tokenId
-	) public {
-		require(false, stub_error);
-		from;
-		to;
-		tokenId;
-		dummy = 0;
-	}
+	) public;
 
 	/// @dev EVM selector for this function is: 0x23b872dd,
 	///  or in textual repr: transferFrom(address,address,uint256)
@@ -343,50 +297,23 @@ contract ERC721 is Dummy, ERC165, ERC721Events {
 		address from,
 		address to,
 		uint256 tokenId
-	) public {
-		require(false, stub_error);
-		from;
-		to;
-		tokenId;
-		dummy = 0;
-	}
+	) public;
 
 	/// @dev EVM selector for this function is: 0x095ea7b3,
 	///  or in textual repr: approve(address,uint256)
-	function approve(address approved, uint256 tokenId) public {
-		require(false, stub_error);
-		approved;
-		tokenId;
-		dummy = 0;
-	}
+	function approve(address approved, uint256 tokenId) public;
 
 	/// @dev EVM selector for this function is: 0xa22cb465,
 	///  or in textual repr: setApprovalForAll(address,bool)
-	function setApprovalForAll(address operator, bool approved) public {
-		require(false, stub_error);
-		operator;
-		approved;
-		dummy = 0;
-	}
+	function setApprovalForAll(address operator, bool approved) public;
 
 	/// @dev EVM selector for this function is: 0x081812fc,
 	///  or in textual repr: getApproved(uint256)
-	function getApproved(uint256 tokenId) public view returns (address) {
-		require(false, stub_error);
-		tokenId;
-		dummy;
-		return 0x0000000000000000000000000000000000000000;
-	}
+	function getApproved(uint256 tokenId) public view returns (address);
 
 	/// @dev EVM selector for this function is: 0xe985e9c5,
 	///  or in textual repr: isApprovedForAll(address,address)
-	function isApprovedForAll(address owner, address operator) public view returns (bool) {
-		require(false, stub_error);
-		owner;
-		operator;
-		dummy;
-		return false;
-	}
+	function isApprovedForAll(address owner, address operator) public view returns (bool);
 }
 
 contract MyContract is
