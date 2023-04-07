@@ -12,21 +12,21 @@ By encoding Solidity definitions in Rust, this library also provides generation 
 Solidity interfaces for Ethereum developers.
 
 ## Usage
-To represent a contract in Substrate, use the `solidity_interface` attribute on the implementation of your structure representing your contact. This attribute has several parameters that implement inheritance, interface validation at compile time, and more.
+To create a contract in Substrate, make use of the `solidity_interface` attribute. This attribute should be applied to the implementation of the structure that represents your contract. It offers various parameters that enable features such as inheritance, interface validation during compilation, and other functionalities.
 
 There is also support for function overloading using the atribute `#[solidity(rename="funcName")]`.
 
 ## Installation
-Add to `Cargo.toml` following lines:
+Add the following line to your `Cargo.toml` project file.
 ```toml
 [dependencies]
 evm-coder = "0.3"
 ```
 
 ## Example
-In this example, we are implementing a contract with ERC721 support and an additional extension interface.
+Consider this example where we're creating a contract that supports ERC721 along with an additional extension interface.
 
-Let's define the interface of our contract:
+To begin, we define the interface of our contract using the following Rust code:
 ```rust
 struct ContractHandle;
 
@@ -39,9 +39,10 @@ struct ContractHandle;
 )]
 impl ContractHandle{}
 ```
-Here we have described our contract named `MyContract`, which implements two interfaces `ERC721` and `CustomContract`.
 
-Next, we implement the ERC721 interface:
+The code above defines a contract named MyContract that implements two interfaces, namely, ERC721 and CustomContract.
+
+Moving forward, we proceed to actually implement the ERC721 interface:
 ```rust
 // This docs will be included into the generated `sol` file.
 /// @title ERC-721 Non-Fungible Token Standard
@@ -97,9 +98,10 @@ impl ContractHandle {
 	}
 }
 ```
-In this implementation of the interface, `ERC721Events` events have been included that will occur during the corresponding calls. The `expect_selector` directive in the `solidity_interface` annotation checks the contract selector at compile time, which will prevent errors when implementing standard interfaces.
 
-Let's create events for ERC721:
+In this implementation of the interface, we have included the events of `ERC721Events` that will trigger during the respective calls. To ensure seamless implementation of standard interfaces, the `expect_selector` directive in the `solidity_interface` annotation checks the contract selector at compile time, thereby preventing errors.
+
+Now, let's proceed with the creation of events for ERC721:
 ```rust
 #[derive(ToLog)]
 pub enum ERC721Events {
@@ -157,9 +159,7 @@ impl ContractHandle {
 	}
 }
 ```
-The methods `do_some_0` and `do_some_1` are marked with the macro `#[solidity(rename_selector = "doSome")]`,
-which allows them to appear in the `sol` interface as a single overloaded method named `doSome`. The `do_another` method will be provided in
-`sol` file, but it will be commented out. The last `do_magic` method uses custom types, and we can do that too!
+The methods `do_some_0` and `do_some_1` have been annotated with the macro `#[solidity(rename_selector = "doSome")]`. This allows them to be presented in the solidity interface as a **single** overloaded method named doSome. Meanwhile, the `do_another` method will be included in the `.sol` file but commented out. Lastly, the `do_magic` method utilizes custom types -- we can do that too!
 
 Let's make our types available in *solidity* (`Option` is available by default):
 ```rust
