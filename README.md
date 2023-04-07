@@ -8,11 +8,12 @@
 ## Overview
 Library for seamless call translation between Rust and Solidity code.
 
-By encoding solidity definitions in Rust, this library also provides generation of
-solidity interfaces for ethereum developers.
+By encoding Solidity definitions in Rust, this library also provides generation of
+Solidity interfaces for Ethereum developers.
 
 ## Usage
 To represent a contract in Substrate, use the `solidity_interface` attribute on the implementation of your structure representing your contact. This attribute has several parameters that implement inheritance, interface validation at compile time, and more.
+
 There is also support for function overloading using the atribute `#[solidity(rename="funcName")]`.
 
 ## Installation
