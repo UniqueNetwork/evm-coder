@@ -19,7 +19,7 @@ There is also support for function overloading using the atribute `#[solidity(re
 Add to `Cargo.toml` following lines:
 ```toml
 [dependencies]
-evm-coder = "0.3.4"
+evm-coder = "0.3"
 ```
 
 ## Example
@@ -46,9 +46,9 @@ Next, we implement the ERC721 interface:
 /// @title ERC-721 Non-Fungible Token Standard
 /// @dev See https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
 #[solidity_interface(
-    name = ERC721,                  // Contract name
-    events(ERC721Events),           // Include events
-    expect_selector = 0x80ac58cd    // Expected selector of contract (will be matched at compile time)
+	name = ERC721,                  // Contract name
+	events(ERC721Events),           // Include events
+	expect_selector = 0x80ac58cd    // Expected selector of contract (will be matched at compile time)
 )]
 impl ContractHandle {
 
@@ -136,9 +136,9 @@ Let's create our extension:
 ```rust
 #[solidity_interface(name = CustomContract)
 impl ContractHandle {
-    #[solidity(rename_selector = "doSome")]
+	#[solidity(rename_selector = "doSome")]
 	fn do_some_0(&mut self, caller: Caller, param: bool) -> Result<()> {
-        todo!()
+		todo!()
 	}
 
     #[solidity(rename_selector = "doSome")]
@@ -172,9 +172,9 @@ struct Struct {
 #[repr(u8)]
 enum Enum {
 	First,
-    Second,
-    #[default]
-    Third,
+	Second,
+	#[default]
+	Third,
 }
 ```
 It's so easy to maintain your types with the `AbiCoder` derived macro.
