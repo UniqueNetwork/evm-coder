@@ -240,6 +240,12 @@ impl_tuples! {A B C D E F G}
 impl_tuples! {A B C D E F G H}
 impl_tuples! {A B C D E F G H I}
 impl_tuples! {A B C D E F G H I J}
+impl_tuples! {A B C D E F G H I J K}
+impl_tuples! {A B C D E F G H I J K L}
+impl_tuples! {A B C D E F G H I J K L M}
+impl_tuples! {A B C D E F G H I J K L M N}
+impl_tuples! {A B C D E F G H I J K L M N O}
+impl_tuples! {A B C D E F G H I J K L M N O P}
 
 //----- impls for Option -----
 impl<T: AbiType> AbiType for Option<T> {
