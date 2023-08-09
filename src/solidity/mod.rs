@@ -502,3 +502,39 @@ impl SolidityEnum {
 		Ok(())
 	}
 }
+
+pub struct SolidityConstant {
+	pub docs: &'static [&'static str],
+	pub name: &'static str,
+	pub value: u8,
+}
+
+pub struct SolidityLibrary {
+	pub docs: &'static [&'static str],
+	pub name: &'static str,
+	pub fields: Vec<SolidityConstant>,
+}
+
+impl SolidityLibrary {
+	pub fn format(&self, out: &mut impl fmt::Write) -> fmt::Result {
+		for doc in self.docs {
+			writeln!(out, "///{}", doc)?;
+		}
+		writeln!(out, "type {} is uint32;", self.name)?;
+		write!(out, "library {}Lib {{", self.name)?;
+		for (i, field) in self.fields.iter().enumerate() {
+			writeln!(out)?;
+			for doc in field.docs {
+				writeln!(out, "///{}", doc)?;
+			}
+			write!(
+				out,
+				"\t{} constant {}Field = {}.wrap({});",
+				self.name, field.name, self.name, field.value
+			)?;
+		}
+		writeln!(out)?;
+		writeln!(out, "}}")?;
+		Ok(())
+	}
+}

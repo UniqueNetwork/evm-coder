@@ -1,7 +1,11 @@
 mod derive_enum;
+#[cfg(feature = "bondrewd")]
+mod derive_flags;
 mod derive_struct;
 
 use derive_enum::expand_enum;
+#[cfg(feature = "bondrewd")]
+use derive_flags::expand_flags;
 use derive_struct::expand_struct;
 
 pub(crate) fn impl_abi_macro(ast: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
@@ -13,7 +17,21 @@ pub(crate) fn impl_abi_macro(ast: &syn::DeriveInput) -> syn::Result<proc_macro2:
 	}
 }
 
-fn extract_docs(attrs: &[syn::Attribute]) -> syn::Result<Vec<String>> {
+#[cfg(feature = "bondrewd")]
+pub(crate) fn impl_abi_flags_macro(
+	ast: &syn::DeriveInput,
+) -> syn::Result<proc_macro2::TokenStream> {
+	let name = &ast.ident;
+	match &ast.data {
+		syn::Data::Struct(ds) => expand_flags(ds, ast),
+		_ => Err(syn::Error::new(
+			name.span(),
+			"Unions and enums aren't supported",
+		)),
+	}
+}
+
+pub fn extract_docs(attrs: &[syn::Attribute]) -> syn::Result<Vec<String>> {
 	attrs
 		.iter()
 		.filter_map(|attr| {

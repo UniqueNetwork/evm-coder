@@ -733,3 +733,155 @@ mod test_enum {
 		}
 	}
 }
+
+#[cfg(feature = "bondrewd")]
+mod test_flags {
+	use bondrewd::Bitfields;
+	use evm_coder::AbiCoderFlags;
+
+	/// Some docs
+	/// At multi
+	/// line
+	#[derive(AbiCoderFlags, Bitfields, Debug, PartialEq, Default, Clone, Copy)]
+	#[bondrewd(enforce_bytes = 1)]
+	struct Color {
+		/// Docs for Red
+		/// multi
+		/// line
+
+		#[bondrewd(reserve, bits = "0..1")]
+		red: bool,
+		#[bondrewd(bits = "1..2")]
+		green: bool,
+		/// Docs for Blue
+		#[bondrewd(bits = "2..8")]
+		blue: u8,
+	}
+
+	#[derive(AbiCoderFlags, Bitfields, Debug, PartialEq, Default, Clone, Copy)]
+	#[bondrewd(enforce_bytes = 2)]
+	struct MultipleBytes {
+		#[bondrewd(bits = "0..1")]
+		a: bool,
+		#[bondrewd(bits = "1..2")]
+		b: bool,
+		#[bondrewd(bits = "2..8")]
+		c: u8,
+		#[bondrewd(bits = "8..14")]
+		d: u8,
+		#[bondrewd(bits = "14..15")]
+		e: bool,
+		#[bondrewd(bits = "15..16")]
+		f: bool,
+	}
+
+	#[test]
+	fn empty() {}
+
+	#[test]
+	fn bad_flags() {
+		let t = trybuild::TestCases::new();
+		t.compile_fail("tests/build_failed/abi_derive_flags_generation.rs");
+	}
+
+	#[test]
+	fn impl_abi_type_signature_same_for_structs() {
+		assert_eq!(
+			<Color as evm_coder::abi::AbiType>::SIGNATURE
+				.as_str()
+				.unwrap(),
+			<u32 as evm_coder::abi::AbiType>::SIGNATURE
+				.as_str()
+				.unwrap()
+		);
+	}
+
+	#[test]
+	fn impl_abi_type_is_dynamic_same_for_structs() {
+		assert_eq!(
+			<Color as evm_coder::abi::AbiType>::is_dynamic(),
+			<u32 as evm_coder::abi::AbiType>::is_dynamic()
+		);
+	}
+
+	#[test]
+	fn impl_abi_type_size_same_for_structs() {
+		assert_eq!(
+			<Color as evm_coder::abi::AbiType>::size(),
+			<u32 as evm_coder::abi::AbiType>::size()
+		);
+	}
+
+	#[test]
+	fn test_coder_one_byte() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let color = Color {
+			red: false,
+			green: true,
+			blue: 0,
+		};
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<Color as evm_coder::abi::AbiWrite>::abi_write(&color, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u32 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+
+			let color_int = u32::from_le_bytes([0, 0, 0, color.into_bytes()[0]]);
+
+			<u32 as evm_coder::abi::AbiWrite>::abi_write(&color_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u32);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_flags).unwrap();
+			let restored_flags_data =
+				<Color as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, color);
+		}
+	}
+
+	#[test]
+	fn test_coder_two_bytes() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = MultipleBytes {
+			a: true,
+			b: false,
+			c: 0,
+			d: 0,
+			e: false,
+			f: true,
+		};
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<MultipleBytes as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u32 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			let bytes = data.into_bytes();
+			let data_int = u32::from_le_bytes([0, 0, bytes[1], bytes[0]]);
+
+			<u32 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u32);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_flags).unwrap();
+			let restored_flags_data =
+				<MultipleBytes as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+}

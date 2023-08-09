@@ -119,6 +119,8 @@ pub use evm_coder_procedural::solidity_interface;
 /// }
 /// ```
 pub use evm_coder_procedural::AbiCoder;
+#[cfg(feature = "bondrewd")]
+pub use evm_coder_procedural::AbiCoderFlags;
 /// Derives [`ToLog`] for enum
 ///
 /// Selectors will be derived from variant names, there is currently no way to have custom naming

@@ -8,6 +8,8 @@ use syn::{
 
 mod abi_derive;
 mod solidity_interface;
+#[cfg(feature = "bondrewd")]
+mod structs;
 mod to_log;
 
 fn fn_selector_str(input: &str) -> u32 {
@@ -178,6 +180,18 @@ pub fn to_log(value: TokenStream) -> TokenStream {
 pub fn abi_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	let ast = parse_macro_input!(input as DeriveInput);
 	let ts = match abi_derive::impl_abi_macro(&ast) {
+		Ok(e) => e,
+		Err(e) => e.to_compile_error(),
+	};
+	ts.into()
+}
+
+#[cfg(feature = "bondrewd")]
+/// See documentation for this proc-macro reexported in `evm-coder` crate
+#[proc_macro_derive(AbiCoderFlags, attributes(bondrewd,))]
+pub fn abi_flags_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+	let ast = parse_macro_input!(input as DeriveInput);
+	let ts = match abi_derive::impl_abi_flags_macro(&ast) {
 		Ok(e) => e,
 		Err(e) => e.to_compile_error(),
 	};

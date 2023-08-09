@@ -29,6 +29,7 @@ ethereum = { version = "0.14.0", default-features = false }
 impl-trait-for-tuples = "0.2.2"
 
 [dev-dependencies]
+bondrewd = { version = "0.1.14", features = ["derive"], default-features = false }
 # We want to assert some large binary blobs equality in tests
 hex = "0.4.3"
 hex-literal = "0.3.4"
@@ -39,6 +40,7 @@ derivative = { version = "2.2" }
 
 [features]
 default = ["std"]
+bondrewd = ["evm-coder-procedural/bondrewd"]
 std = ["ethereum/std", "primitive-types/std"]
 # Stub/interface generation
 stubgen = []

@@ -1,0 +1,5 @@
+error: Empty structs not supported
+ --> tests/build_failed/abi_derive_flags_generation.rs:5:8
+  |
+5 | struct EmptyStruct {}
+  |        ^^^^^^^^^^^
