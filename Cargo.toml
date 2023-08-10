@@ -4,6 +4,7 @@ package.documentation = "https://docs.rs/evm-coder"
 package.license = "MIT OR Apache-2.0"
 package.repository = "https://github.com/UniqueNetwork/evm-coder"
 package.version = "0.3.5"
+resolver = "2"
 
 [workspace.dependencies]
 evm-coder-procedural = { path = "./procedural", version = "0.3.5" }
@@ -37,6 +38,7 @@ similar-asserts = "1.4"
 trybuild = "1.0"
 # Used to demonstrate enum derive feature
 derivative = { version = "2.2" }
+evm-coder-procedural = { workspace = true, features = ["bondrewd"] }
 
 [features]
 default = ["std"]
