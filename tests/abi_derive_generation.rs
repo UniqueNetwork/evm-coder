@@ -758,23 +758,6 @@ mod test_flags {
 		blue: u8,
 	}
 
-	#[derive(AbiCoderFlags, Bitfields, Debug, PartialEq, Default, Clone, Copy)]
-	#[bondrewd(enforce_bytes = 2)]
-	struct MultipleBytes {
-		#[bondrewd(bits = "0..1")]
-		a: bool,
-		#[bondrewd(bits = "1..2")]
-		b: bool,
-		#[bondrewd(bits = "2..8")]
-		c: u8,
-		#[bondrewd(bits = "8..14")]
-		d: u8,
-		#[bondrewd(bits = "14..15")]
-		e: bool,
-		#[bondrewd(bits = "15..16")]
-		f: bool,
-	}
-
 	#[test]
 	fn empty() {}
 
@@ -790,9 +773,7 @@ mod test_flags {
 			<Color as evm_coder::abi::AbiType>::SIGNATURE
 				.as_str()
 				.unwrap(),
-			<u32 as evm_coder::abi::AbiType>::SIGNATURE
-				.as_str()
-				.unwrap()
+			<u8 as evm_coder::abi::AbiType>::SIGNATURE.as_str().unwrap()
 		);
 	}
 
@@ -800,7 +781,7 @@ mod test_flags {
 	fn impl_abi_type_is_dynamic_same_for_structs() {
 		assert_eq!(
 			<Color as evm_coder::abi::AbiType>::is_dynamic(),
-			<u32 as evm_coder::abi::AbiType>::is_dynamic()
+			<u8 as evm_coder::abi::AbiType>::is_dynamic()
 		);
 	}
 
@@ -808,7 +789,7 @@ mod test_flags {
 	fn impl_abi_type_size_same_for_structs() {
 		assert_eq!(
 			<Color as evm_coder::abi::AbiType>::size(),
-			<u32 as evm_coder::abi::AbiType>::size()
+			<u8 as evm_coder::abi::AbiType>::size()
 		);
 	}
 
@@ -831,9 +812,9 @@ mod test_flags {
 		let encoded_u32 = {
 			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
 
-			let color_int = u32::from_le_bytes([0, 0, 0, color.into_bytes()[0]]);
+			let color_int = u8::from_le_bytes(color.into_bytes());
 
-			<u32 as evm_coder::abi::AbiWrite>::abi_write(&color_int, &mut writer);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&color_int, &mut writer);
 			writer.finish()
 		};
 
@@ -845,6 +826,23 @@ mod test_flags {
 				<Color as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
 			assert_eq!(restored_flags_data, color);
 		}
+	}
+
+	#[derive(AbiCoderFlags, Bitfields, Debug, PartialEq, Default, Clone, Copy)]
+	#[bondrewd(enforce_bytes = 2)]
+	struct MultipleBytes {
+		#[bondrewd(bits = "0..1")]
+		a: bool,
+		#[bondrewd(bits = "1..2")]
+		b: bool,
+		#[bondrewd(bits = "2..8")]
+		c: u8,
+		#[bondrewd(bits = "8..14")]
+		d: u8,
+		#[bondrewd(bits = "14..15")]
+		e: bool,
+		#[bondrewd(bits = "15..16")]
+		f: bool,
 	}
 
 	#[test]
@@ -869,7 +867,7 @@ mod test_flags {
 		let encoded_u32 = {
 			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
 			let bytes = data.into_bytes();
-			let data_int = u32::from_le_bytes([0, 0, bytes[1], bytes[0]]);
+			let data_int = u32::from_be_bytes([bytes[1], bytes[0], 0, 0]);
 
 			<u32 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
 			writer.finish()
@@ -881,6 +879,55 @@ mod test_flags {
 			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_flags).unwrap();
 			let restored_flags_data =
 				<MultipleBytes as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+
+	/// Cross account struct
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd(enforce_bytes = 1)]
+	pub struct Flags {
+		#[bondrewd(bits = "0..1")]
+		pub a: bool,
+		#[bondrewd(bits = "1..2")]
+		pub b: bool,
+		#[bondrewd(bits = "2..7")]
+		pub c: u8,
+		#[bondrewd(bits = "7..8")]
+		pub d: bool,
+	}
+
+	#[test]
+	fn test_creation_from_flags() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = Flags {
+			a: true,
+			b: true,
+			c: 3,
+			d: false,
+		};
+
+		let data_int = (1u8 << 7) + (1u8 << 6) + (3u8 << 1);
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<Flags as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u8 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u8);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u8).unwrap();
+			let restored_flags_data =
+				<Flags as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
 			assert_eq!(restored_flags_data, data);
 		}
 	}

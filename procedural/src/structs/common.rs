@@ -11,36 +11,6 @@ use crate::{
 	},
 };
 
-/// Returns a u8 mask with provided `num` amount of 1's on the left side (most significant bit)
-pub fn get_left_and_mask(num: usize) -> u8 {
-	match num {
-		8 => 0b11111111,
-		7 => 0b11111110,
-		6 => 0b11111100,
-		5 => 0b11111000,
-		4 => 0b11110000,
-		3 => 0b11100000,
-		2 => 0b11000000,
-		1 => 0b10000000,
-		_ => 0b00000000,
-	}
-}
-
-/// Returns a u8 mask with provided `num` amount of 1's on the right side (least significant bit)
-pub fn get_right_and_mask(num: usize) -> u8 {
-	match num {
-		8 => 0b11111111,
-		7 => 0b01111111,
-		6 => 0b00111111,
-		5 => 0b00011111,
-		4 => 0b00001111,
-		3 => 0b00000111,
-		2 => 0b00000011,
-		1 => 0b00000001,
-		_ => 0b00000000,
-	}
-}
-
 pub struct BitMath {
 	pub amount_of_bits: usize,
 	pub zeros_on_left: usize,

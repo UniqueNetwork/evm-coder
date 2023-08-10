@@ -144,7 +144,7 @@ pub fn impl_enum_solidity_type_name(name: &syn::Ident) -> proc_macro2::TokenStre
 }
 
 pub fn check_enum_fields(de: &syn::DataEnum) -> syn::Result<()> {
-	for v in de.variants.iter() {
+	for v in &de.variants {
 		if !v.fields.is_empty() {
 			return Err(syn::Error::new(
 				v.ident.span(),
@@ -163,7 +163,7 @@ pub fn check_enum_fields(de: &syn::DataEnum) -> syn::Result<()> {
 
 pub fn check_repr_u8(name: &syn::Ident, attrs: &[syn::Attribute]) -> syn::Result<()> {
 	let mut has_repr = false;
-	for attr in attrs.iter() {
+	for attr in attrs {
 		if attr.path.is_ident("repr") {
 			has_repr = true;
 			let meta = attr.parse_meta()?;
@@ -180,7 +180,7 @@ pub fn check_repr_u8(name: &syn::Ident, attrs: &[syn::Attribute]) -> syn::Result
 
 fn check_meta_u8(meta: &syn::Meta) -> Result<(), syn::Error> {
 	if let syn::Meta::List(p) = meta {
-		for nm in p.nested.iter() {
+		for nm in &p.nested {
 			if let syn::NestedMeta::Meta(syn::Meta::Path(p)) = nm {
 				if !p.is_ident("u8") {
 					return Err(syn::Error::new(

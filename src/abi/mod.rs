@@ -155,6 +155,20 @@ impl<'i> AbiReader<'i> {
 		self.read_padright()
 	}
 
+	/// Read [`[u8; S]`] padded left at current position, then advance
+	pub fn bytes_padleft<const S: usize>(&mut self) -> Result<[u8; S]> {
+		let offset = self.offset;
+		self.offset += ABI_ALIGNMENT;
+		Self::read_pad(
+			self.buf,
+			offset,
+			offset,
+			offset + ABI_ALIGNMENT - S,
+			offset + ABI_ALIGNMENT - S,
+			offset + ABI_ALIGNMENT,
+		)
+	}
+
 	/// Read [`Vec<u8>`] at current position, then advance
 	pub fn bytes(&mut self) -> Result<Vec<u8>> {
 		let mut subresult = self.subresult(None)?;
@@ -355,6 +369,11 @@ impl AbiWriter {
 	/// Append recursive [`[u8]`] at end of buffer
 	pub fn bytes(&mut self, value: &[u8]) {
 		self.memory(value);
+	}
+
+	/// Write [`bytes`] to end of buffer
+	pub fn bytes_padleft(&mut self, block: &[u8]) {
+		self.write_padleft(block);
 	}
 
 	/// Finish writer, concatenating all internal buffers

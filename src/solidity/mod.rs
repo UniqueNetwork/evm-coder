@@ -50,19 +50,19 @@ impl TypeCollector {
 	pub fn collect_tuple<T: SolidityTupleTy>(&self) -> String {
 		let names = T::fields(self);
 		if let Some(id) = self.anonymous.borrow().get(&names).cloned() {
-			return format!("Tuple{}", id);
+			return format!("Tuple{id}");
 		}
 		let id = self.next_id();
 		let mut str = String::new();
 		writeln!(str, "/// @dev anonymous struct").unwrap();
-		writeln!(str, "struct Tuple{} {{", id).unwrap();
+		writeln!(str, "struct Tuple{id} {{").unwrap();
 		for (i, name) in names.iter().enumerate() {
-			writeln!(str, "\t{} field_{};", name, i).unwrap();
+			writeln!(str, "\t{name} field_{i};").unwrap();
 		}
 		writeln!(str, "}}").unwrap();
 		self.collect(str);
 		self.anonymous.borrow_mut().insert(names, id);
-		format!("Tuple{}", id)
+		format!("Tuple{id}")
 	}
 	pub fn collect_struct<T: SolidityStructTy>(&self) -> String {
 		T::generate_solidity_interface(self)
@@ -269,9 +269,9 @@ impl<A: SolidityArguments, R: SolidityArguments> SolidityFunctions for SolidityF
 		writer: &mut impl fmt::Write,
 		tc: &TypeCollector,
 	) -> fmt::Result {
-		let hide_comment = self.hide.then_some("// ").unwrap_or("");
+		let hide_comment = if self.hide { "// " } else { "" };
 		for doc in self.docs {
-			writeln!(writer, "\t{hide_comment}///{}", doc)?;
+			writeln!(writer, "\t{hide_comment}///{doc}")?;
 		}
 		writeln!(
 			writer,
@@ -364,7 +364,7 @@ impl<F: SolidityFunctions> SolidityInterface<F> {
 	) -> fmt::Result {
 		const ZERO_BYTES: [u8; 4] = [0; 4];
 		for doc in self.docs {
-			writeln!(out, "///{}", doc)?;
+			writeln!(out, "///{doc}")?;
 		}
 		if self.selector != ZERO_BYTES {
 			writeln!(
@@ -385,7 +385,7 @@ impl<F: SolidityFunctions> SolidityInterface<F> {
 				if i != 0 {
 					write!(out, ",")?;
 				}
-				write!(out, " {}", n)?;
+				write!(out, " {n}")?;
 			}
 		}
 		writeln!(out, " {{")?;
@@ -437,11 +437,12 @@ where
 {
 	fn solidity_name(&self, out: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		for doc in self.docs {
-			writeln!(out, "///{}", doc)?;
+			writeln!(out, "///{doc}")?;
 		}
 		write!(out, "\t")?;
 		T::solidity_name(out, tc)?;
-		writeln!(out, " {};", self.name)?;
+		let field_name = self.name;
+		writeln!(out, " {field_name};",)?;
 		Ok(())
 	}
 }
@@ -457,7 +458,7 @@ where
 {
 	pub fn format(&self, out: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		for doc in self.docs {
-			writeln!(out, "///{}", doc)?;
+			writeln!(out, "///{doc}")?;
 		}
 		writeln!(out, "struct {} {{", self.name)?;
 		self.fields.solidity_name(out, tc)?;
@@ -473,7 +474,7 @@ pub struct SolidityEnumVariant {
 impl SolidityItems for SolidityEnumVariant {
 	fn solidity_name(&self, out: &mut impl fmt::Write, _tc: &TypeCollector) -> fmt::Result {
 		for doc in self.docs {
-			writeln!(out, "///{}", doc)?;
+			writeln!(out, "///{doc}")?;
 		}
 		write!(out, "\t{}", self.name)?;
 		Ok(())
@@ -487,9 +488,10 @@ pub struct SolidityEnum {
 impl SolidityEnum {
 	pub fn format(&self, out: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		for doc in self.docs {
-			writeln!(out, "///{}", doc)?;
+			writeln!(out, "///{doc}")?;
 		}
-		write!(out, "enum {} {{", self.name)?;
+		let name = self.name;
+		write!(out, "enum {name} {{")?;
 		for (i, field) in self.fields.iter().enumerate() {
 			if i != 0 {
 				write!(out, ",")?;
@@ -503,35 +505,79 @@ impl SolidityEnum {
 	}
 }
 
-pub struct SolidityConstant {
+pub enum SolidityFlagsField {
+	Bool(SolidityFlagsBool),
+	Number(SolidityFlagsNumber),
+}
+
+impl SolidityFlagsField {
+	pub fn docs(&self) -> &'static [&'static str] {
+		match self {
+			Self::Bool(field) => field.docs,
+			Self::Number(field) => field.docs,
+		}
+	}
+}
+
+pub struct SolidityFlagsBool {
 	pub docs: &'static [&'static str],
 	pub name: &'static str,
 	pub value: u8,
 }
 
+pub struct SolidityFlagsNumber {
+	pub docs: &'static [&'static str],
+	pub name: &'static str,
+	pub start_bit: usize,
+	pub amount_of_bits: usize,
+}
+
 pub struct SolidityLibrary {
 	pub docs: &'static [&'static str],
 	pub name: &'static str,
-	pub fields: Vec<SolidityConstant>,
+	pub total_bytes: usize,
+	pub fields: Vec<SolidityFlagsField>,
 }
 
 impl SolidityLibrary {
 	pub fn format(&self, out: &mut impl fmt::Write) -> fmt::Result {
 		for doc in self.docs {
-			writeln!(out, "///{}", doc)?;
+			writeln!(out, "///{doc}")?;
 		}
-		writeln!(out, "type {} is uint32;", self.name)?;
-		write!(out, "library {}Lib {{", self.name)?;
-		for (i, field) in self.fields.iter().enumerate() {
+		let total_bytes = self.total_bytes;
+		let abi_type = match total_bytes {
+			1 => "uint8",
+			2..=4 => "uint32",
+			5..=8 => "uint64",
+			_ => return Err(fmt::Error),
+		};
+		let lib_name = self.name;
+		writeln!(out, "type {lib_name} is {abi_type};")?;
+		write!(out, "library {lib_name}Lib {{")?;
+		for field in self.fields.iter() {
 			writeln!(out)?;
-			for doc in field.docs {
-				writeln!(out, "///{}", doc)?;
+			for doc in field.docs() {
+				writeln!(out, "///{doc}")?;
 			}
-			write!(
-				out,
-				"\t{} constant {}Field = {}.wrap({});",
-				self.name, field.name, self.name, field.value
-			)?;
+			match field {
+				SolidityFlagsField::Bool(field) => {
+					let field_name = field.name;
+					let field_value = field.value;
+					write!(
+						out,
+						"\t{lib_name} constant {field_name}Field = {lib_name}.wrap({field_value});"
+					)?;
+				}
+				SolidityFlagsField::Number(field) => {
+					let field_name = field.name;
+					let amount_of_bits = field.amount_of_bits;
+					let start_bit = field.start_bit;
+					write!(
+						out,
+						"\tfunction {field_name}Field({abi_type} value) public pure returns ({lib_name}) {{\n\t\trequire(value < 1 << {amount_of_bits}, \"out of bound value\");\n\t\treturn {lib_name}.wrap(value << {start_bit});\n\t}}"
+					)?;
+				}
+			}
 		}
 		writeln!(out)?;
 		writeln!(out, "}}")?;
