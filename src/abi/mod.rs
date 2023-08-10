@@ -156,7 +156,12 @@ impl<'i> AbiReader<'i> {
 	}
 
 	/// Read [`[u8; S]`] padded left at current position, then advance
+	///
+	/// # Panics
+	///
+	/// Panics if attempting to read more bytes then `ABI_ALIGNMENT`
 	pub fn bytes_padleft<const S: usize>(&mut self) -> Result<[u8; S]> {
+		assert!(S <= ABI_ALIGNMENT);
 		let offset = self.offset;
 		self.offset += ABI_ALIGNMENT;
 		Self::read_pad(

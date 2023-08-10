@@ -931,4 +931,102 @@ mod test_flags {
 			assert_eq!(restored_flags_data, data);
 		}
 	}
+
+	/// Cross account struct
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd(enforce_bytes = 1)]
+	pub struct FlagsLE {
+		#[bondrewd(bits = "0..1")]
+		pub a: bool,
+		#[bondrewd(bits = "1..2")]
+		pub b: bool,
+		#[bondrewd(bits = "2..7", endianness = "le")]
+		pub c: u8,
+		#[bondrewd(bits = "7..8")]
+		pub d: bool,
+	}
+
+	#[test]
+	fn test_creation_from_flags_with_le_field() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = FlagsLE {
+			a: true,
+			b: true,
+			c: 5,
+			d: false,
+		};
+
+		let data_int = (1u8 << 7) + (1u8 << 6) + (5u8 << 1);
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<FlagsLE as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u8 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u8);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u8).unwrap();
+			let restored_flags_data =
+				<FlagsLE as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+
+	/// Cross account struct
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd(enforce_bytes = 1)]
+	pub struct FlagsBE {
+		#[bondrewd(bits = "0..1")]
+		pub a: bool,
+		#[bondrewd(bits = "1..2")]
+		pub b: bool,
+		#[bondrewd(bits = "2..7", endianness = "be")]
+		pub c: u8,
+		#[bondrewd(bits = "7..8")]
+		pub d: bool,
+	}
+
+	#[test]
+	fn test_creation_from_flags_with_be_field() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = FlagsBE {
+			a: true,
+			b: true,
+			c: 5,
+			d: false,
+		};
+
+		let data_int = (1u8 << 7) + (1u8 << 6) + (5u8 << 1);
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<FlagsBE as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u8 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u8);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u8).unwrap();
+			let restored_flags_data =
+				<FlagsBE as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
 }

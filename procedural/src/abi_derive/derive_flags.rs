@@ -200,7 +200,10 @@ pub fn expand_flags(ds: &syn::DataStruct, ast: &syn::DeriveInput) -> syn::Result
 	};
 
 	if struct_info.lsb_zero {
-		return Err(syn::Error::new(struct_info.name.span(), "read_from = 'lsb0' is not supported"))
+		return Err(syn::Error::new(
+			struct_info.name.span(),
+			"read_from = 'lsb0' is not supported",
+		));
 	}
 
 	let total_bytes = struct_info.total_bytes();
