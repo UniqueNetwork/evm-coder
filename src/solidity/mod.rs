@@ -522,7 +522,7 @@ impl SolidityFlagsField {
 pub struct SolidityFlagsBool {
 	pub docs: &'static [&'static str],
 	pub name: &'static str,
-	pub value: u8,
+	pub shift: usize,
 }
 
 pub struct SolidityFlagsNumber {
@@ -562,7 +562,7 @@ impl SolidityLibrary {
 			match field {
 				SolidityFlagsField::Bool(field) => {
 					let field_name = field.name;
-					let field_value = field.value;
+					let field_value = 1u32 << field.shift;
 					write!(
 						out,
 						"\t{lib_name} constant {field_name}Field = {lib_name}.wrap({field_value});"

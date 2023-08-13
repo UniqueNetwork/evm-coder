@@ -55,7 +55,7 @@ impl BitMath {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Endianness {
 	Little,
 	Big,
@@ -159,7 +159,7 @@ impl FieldDataType {
 		ty: &syn::Type,
 		attrs: &mut FieldAttrBuilder,
 		ident: &Ident,
-		default_endianess: &Endianness,
+		default_endianness: &Endianness,
 	) -> syn::Result<FieldDataType> {
 		let data_type = match ty {
 			Type::Path(ref path) => match attrs.ty {
@@ -238,7 +238,7 @@ impl FieldDataType {
 										&array_path.elem,
 										&mut sub_attrs,
 										ident,
-										default_endianess,
+										default_endianness,
 									)?;
 
 									let type_ident = &sub_ty.type_quote();
@@ -259,7 +259,7 @@ impl FieldDataType {
 										&array_path.elem,
 										&mut sub_attrs,
 										ident,
-										default_endianess,
+										default_endianness,
 									)?;
 									attrs.endianness = sub_attrs.endianness;
 									let type_ident = &sub_ty.type_quote();
@@ -281,7 +281,7 @@ impl FieldDataType {
 										&array_path.elem,
 										&mut sub_attrs,
 										ident,
-										default_endianess,
+										default_endianness,
 									)?;
 									attrs.endianness = sub_attrs.endianness;
 									let type_ident = &sub_ty.type_quote();
@@ -301,7 +301,7 @@ impl FieldDataType {
 										&array_path.elem,
 										&mut sub_attrs,
 										ident,
-										default_endianess,
+										default_endianness,
 									)?;
 									attrs.bit_range = match std::mem::take(&mut attrs.bit_range) {
 										FieldBuilderRange::Range(ref range) => {
@@ -365,16 +365,16 @@ impl FieldDataType {
 				return Err(Error::new(ident.span(), "Unsupported field type"));
 			}
 		};
-		// if the type is a number and its endianess is None (numbers should have endianess) then we
+		// if the type is a number and its endianness is None (numbers should have endianness) then we
 		// apply the structs default (which might also be None)
 		if data_type.is_number() && !attrs.endianness.perhaps_endianness(data_type.size()) {
-			if default_endianess.has_endianness() {
-				attrs.endianness = Box::new(default_endianess.clone());
+			if default_endianness.has_endianness() {
+				attrs.endianness = Box::new(default_endianness.clone());
 			} else if data_type.size() == 1 {
 				let mut big = Endianness::Big;
 				std::mem::swap(attrs.endianness.as_mut(), &mut big);
 			} else {
-				return Err(Error::new(ident.span(), "field without defined endianess found, please set endianess of struct or fields"));
+				return Err(Error::new(ident.span(), "field without defined endianness found, please set endianness of struct or fields"));
 			}
 		}
 
@@ -627,7 +627,7 @@ impl FieldInfo {
 			&field.ty,
 			&mut attrs_builder,
 			&ident,
-			&struct_info.default_endianess,
+			&struct_info.default_endianness,
 		)?;
 
 		let attr_result: std::result::Result<FieldAttrs, TryFromAttrBuilderError> =
@@ -688,7 +688,7 @@ pub struct StructInfo {
 	pub flip: bool,
 	pub enforcement: StructEnforcement,
 	pub fields: Vec<FieldInfo>,
-	pub default_endianess: Endianness,
+	pub default_endianness: Endianness,
 	pub fill_bits: Option<usize>,
 	pub vis: syn::Visibility,
 }
@@ -723,10 +723,10 @@ impl StructInfo {
 					if let Lit::Str(val) = value.lit {
 						match val.value().as_str() {
 							"le" | "lsb" | "little" | "lil" => {
-								info.default_endianess = Endianness::Little
+								info.default_endianness = Endianness::Little
 							}
-							"be" | "msb" | "big" => info.default_endianess = Endianness::Big,
-							"ne" | "native" => info.default_endianess = Endianness::None,
+							"be" | "msb" | "big" => info.default_endianness = Endianness::Big,
+							"ne" | "native" => info.default_endianness = Endianness::None,
 							_ => {}
 						}
 					}
@@ -823,7 +823,7 @@ impl StructInfo {
 			flip: false,
 			enforcement: StructEnforcement::NoRules,
 			fields: Default::default(),
-			default_endianess: Endianness::None,
+			default_endianness: Endianness::None,
 			fill_bits: None,
 			vis: input.vis.clone(),
 		};

@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::extract_docs;
-use crate::structs::common::{BitMath, FieldInfo, StructInfo};
+use crate::structs::common::{BitMath, Endianness, FieldInfo, StructInfo};
 
 pub fn impl_can_be_placed_in_vec(ident: &syn::Ident) -> TokenStream {
 	quote! {
@@ -24,8 +24,8 @@ fn align_size(name: &syn::Ident, total_bytes: usize) -> syn::Result<usize> {
 	})
 }
 
-pub fn impl_struct_abi_type(name: &syn::Ident, total_bytes: usize) -> syn::Result<TokenStream> {
-	let sub_type = match total_bytes {
+fn align_type(name: &syn::Ident, total_bytes: usize) -> syn::Result<TokenStream> {
+	Ok(match total_bytes {
 		1 => quote! { u8 },
 		2..=4 => quote! { u32 },
 		5..=8 => quote! { u64 },
@@ -35,16 +35,19 @@ pub fn impl_struct_abi_type(name: &syn::Ident, total_bytes: usize) -> syn::Resul
 				format!("Unsupported struct size: {total_bytes}"),
 			))
 		}
-	};
+	})
+}
 
+pub fn impl_struct_abi_type(name: &syn::Ident, total_bytes: usize) -> syn::Result<TokenStream> {
+	let align_type = align_type(name, total_bytes)?;
 	Ok(quote! {
 		impl ::evm_coder::abi::AbiType for #name {
-			const SIGNATURE: ::evm_coder::custom_signature::SignatureUnit = <(#sub_type) as ::evm_coder::abi::AbiType>::SIGNATURE;
+			const SIGNATURE: ::evm_coder::custom_signature::SignatureUnit = <(#align_type) as ::evm_coder::abi::AbiType>::SIGNATURE;
 			fn is_dynamic() -> bool {
-				<(#sub_type) as ::evm_coder::abi::AbiType>::is_dynamic()
+				<(#align_type) as ::evm_coder::abi::AbiType>::is_dynamic()
 			}
 			fn size() -> usize {
-				<(#sub_type) as ::evm_coder::abi::AbiType>::size()
+				<(#align_type) as ::evm_coder::abi::AbiType>::size()
 			}
 		}
 	})
@@ -53,8 +56,7 @@ pub fn impl_struct_abi_type(name: &syn::Ident, total_bytes: usize) -> syn::Resul
 pub fn impl_struct_abi_read(name: &syn::Ident, total_bytes: usize) -> syn::Result<TokenStream> {
 	let aligned_size = align_size(name, total_bytes)?;
 	let bytes = (0..total_bytes).map(|i| {
-		let index = total_bytes - i - 1;
-		quote! { value[#index] }
+		quote! { value[#i] }
 	});
 	Ok(quote!(
 		impl ::evm_coder::abi::AbiRead for #name {
@@ -68,12 +70,19 @@ pub fn impl_struct_abi_read(name: &syn::Ident, total_bytes: usize) -> syn::Resul
 
 pub fn impl_struct_abi_write(name: &syn::Ident, total_bytes: usize) -> syn::Result<TokenStream> {
 	let aligned_size = align_size(name, total_bytes)?;
+	// let bytes = (0..aligned_size).map(|i| {
+	// 	if total_bytes < 1 + i {
+	// 		quote! { 0 }
+	// 	} else {
+	// 		let index = total_bytes - 1 - i;
+	// 		quote! { value[#index] }
+	// 	}
+	// });
 	let bytes = (0..aligned_size).map(|i| {
-		if total_bytes < 1 + i {
+		if i >= total_bytes {
 			quote! { 0 }
 		} else {
-			let index = total_bytes - 1 - i;
-			quote! { value[#index] }
+			quote! { value[#i] }
 		}
 	});
 	Ok(quote!(
@@ -91,15 +100,20 @@ pub fn impl_struct_solidity_type<'a>(
 	docs: &[String],
 	total_bytes: usize,
 	fields: impl Iterator<Item = &'a FieldInfo> + Clone,
-) -> TokenStream {
+) -> syn::Result<TokenStream> {
+	let aligned_size = align_size(name, total_bytes)?;
 	let solidity_name = name.to_string();
 	let solidity_fields = fields.map(|f| {
 		let name = f.ident.as_ref().to_string();
 		let docs = f.docs.clone();
-		let (amount_of_bits, zeros_on_left, _, _) = BitMath::from_field(f)
+		let (amount_of_bits, zeros_on_left, _, starting_inject_byte) = BitMath::from_field(f)
 			.map(|math| math.into_tuple())
 			.unwrap_or((0, 0, 0, 0));
-		let zeros_on_right = 8 - (zeros_on_left + amount_of_bits);
+		assert!(
+			aligned_size * 8 >= (zeros_on_left + amount_of_bits),
+			"{aligned_size} {zeros_on_left} {amount_of_bits} {starting_inject_byte}"
+		);
+		let zeros_on_right = aligned_size * 8 - (zeros_on_left + amount_of_bits);
 		if amount_of_bits == 0 {
 			quote! {
 				SolidityFlagsField::Bool(SolidityFlagsBool {
@@ -109,12 +123,11 @@ pub fn impl_struct_solidity_type<'a>(
 				})
 			}
 		} else if amount_of_bits == 1 {
-			let value: u8 = 1 << zeros_on_right;
 			quote! {
 				SolidityFlagsField::Bool(SolidityFlagsBool {
 					docs: &[#(#docs),*],
 					name: #name,
-					value: #value,
+					shift: #zeros_on_right,
 				})
 			}
 		} else {
@@ -128,7 +141,7 @@ pub fn impl_struct_solidity_type<'a>(
 			}
 		}
 	});
-	quote! {
+	Ok(quote! {
 		#[cfg(feature = "stubgen")]
 		impl ::evm_coder::solidity::SolidityStructTy for #name {
 			/// Generate solidity definitions for methods described in this struct
@@ -149,7 +162,7 @@ pub fn impl_struct_solidity_type<'a>(
 				#solidity_name.to_string()
 			}
 		}
-	}
+	})
 }
 
 pub fn impl_struct_solidity_type_name(name: &syn::Ident) -> TokenStream {
@@ -206,13 +219,25 @@ pub fn expand_flags(ds: &syn::DataStruct, ast: &syn::DeriveInput) -> syn::Result
 		));
 	}
 
+	if let Some(field) = struct_info
+		.fields
+		.iter()
+		.filter(|field| field.bit_size() > 8 && *field.attrs.endianness != Endianness::Big)
+		.next()
+	{
+		return Err(syn::Error::new(
+			field.name.span(),
+			"only big endian fields are supported",
+		));
+	}
+
 	let total_bytes = struct_info.total_bytes();
 	let can_be_plcaed_in_vec = impl_can_be_placed_in_vec(name);
 	let abi_type = impl_struct_abi_type(name, total_bytes)?;
 	let abi_read = impl_struct_abi_read(name, total_bytes)?;
 	let abi_write = impl_struct_abi_write(name, total_bytes)?;
 	let solidity_type =
-		impl_struct_solidity_type(name, &docs, total_bytes, struct_info.fields.iter());
+		impl_struct_solidity_type(name, &docs, total_bytes, struct_info.fields.iter())?;
 	let solidity_type_name = impl_struct_solidity_type_name(name);
 	Ok(quote! {
 		#can_be_plcaed_in_vec
