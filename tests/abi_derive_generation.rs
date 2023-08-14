@@ -733,3 +733,347 @@ mod test_enum {
 		}
 	}
 }
+
+#[cfg(feature = "bondrewd")]
+mod test_flags {
+	use bondrewd::Bitfields;
+	use evm_coder::AbiCoderFlags;
+
+	/// Some docs
+	/// At multi
+	/// line
+	#[derive(AbiCoderFlags, Bitfields, Debug, PartialEq, Default, Clone, Copy)]
+	#[bondrewd(enforce_bytes = 1)]
+	struct Color {
+		/// Docs for Red
+		/// multi
+		/// line
+
+		#[bondrewd(reserve, bits = "0..1")]
+		red: bool,
+		#[bondrewd(bits = "1..2")]
+		green: bool,
+		/// Docs for Blue
+		#[bondrewd(bits = "2..8")]
+		blue: u8,
+	}
+
+	#[test]
+	fn empty() {}
+
+	#[test]
+	fn bad_flags() {
+		let t = trybuild::TestCases::new();
+		t.compile_fail("tests/build_failed/abi_derive_flags_generation.rs");
+	}
+
+	#[test]
+	fn impl_abi_type_signature_same_for_structs() {
+		assert_eq!(
+			<Color as evm_coder::abi::AbiType>::SIGNATURE
+				.as_str()
+				.unwrap(),
+			<u8 as evm_coder::abi::AbiType>::SIGNATURE.as_str().unwrap()
+		);
+	}
+
+	#[test]
+	fn impl_abi_type_is_dynamic_same_for_structs() {
+		assert_eq!(
+			<Color as evm_coder::abi::AbiType>::is_dynamic(),
+			<u8 as evm_coder::abi::AbiType>::is_dynamic()
+		);
+	}
+
+	#[test]
+	fn impl_abi_type_size_same_for_structs() {
+		assert_eq!(
+			<Color as evm_coder::abi::AbiType>::size(),
+			<u8 as evm_coder::abi::AbiType>::size()
+		);
+	}
+
+	#[test]
+	fn test_coder_one_byte() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let color = Color {
+			red: false,
+			green: true,
+			blue: 0,
+		};
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<Color as evm_coder::abi::AbiWrite>::abi_write(&color, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u32 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+
+			let color_int = u8::from_le_bytes(color.into_bytes());
+
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&color_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u32);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_flags).unwrap();
+			let restored_flags_data =
+				<Color as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, color);
+		}
+	}
+
+	#[derive(AbiCoderFlags, Bitfields, Debug, PartialEq, Default, Clone, Copy)]
+	#[bondrewd(enforce_bytes = 2)]
+	struct MultipleBytes {
+		#[bondrewd(bits = "0..1")]
+		a: bool,
+		#[bondrewd(bits = "1..2")]
+		b: bool,
+		#[bondrewd(bits = "2..8")]
+		c: u8,
+		#[bondrewd(bits = "8..14")]
+		d: u8,
+		#[bondrewd(bits = "14..15")]
+		e: bool,
+		#[bondrewd(bits = "15..16")]
+		f: bool,
+	}
+
+	#[test]
+	fn test_coder_two_bytes() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = MultipleBytes {
+			a: true,
+			b: false,
+			c: 0,
+			d: 0,
+			e: false,
+			f: true,
+		};
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<MultipleBytes as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u32 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			let bytes = data.into_bytes();
+			let data_int = u32::from_be_bytes([bytes[0], bytes[1], 0, 0]);
+
+			<u32 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u32);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_flags).unwrap();
+			let restored_flags_data =
+				<MultipleBytes as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+
+	/// Cross account struct
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd(enforce_bytes = 1)]
+	pub struct Flags {
+		#[bondrewd(bits = "0..1")]
+		pub a: bool,
+		#[bondrewd(bits = "1..2")]
+		pub b: bool,
+		#[bondrewd(bits = "2..7")]
+		pub c: u8,
+		#[bondrewd(bits = "7..8")]
+		pub d: bool,
+	}
+
+	#[test]
+	fn test_creation_from_flags() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = Flags {
+			a: true,
+			b: true,
+			c: 3,
+			d: false,
+		};
+
+		let data_int = (1u8 << 7) + (1u8 << 6) + (3u8 << 1);
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<Flags as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u8 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u8);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u8).unwrap();
+			let restored_flags_data =
+				<Flags as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+
+	/// Cross account struct
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd(enforce_bytes = 1)]
+	pub struct FlagsLE {
+		#[bondrewd(bits = "0..1")]
+		pub a: bool,
+		#[bondrewd(bits = "1..2")]
+		pub b: bool,
+		#[bondrewd(bits = "2..7", endianness = "le")]
+		pub c: u8,
+		#[bondrewd(bits = "7..8")]
+		pub d: bool,
+	}
+
+	#[test]
+	fn test_creation_from_flags_with_le_field() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = FlagsLE {
+			a: true,
+			b: true,
+			c: 5,
+			d: false,
+		};
+
+		let data_int = (1u8 << 7) + (1u8 << 6) + (5u8 << 1);
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<FlagsLE as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u8 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u8);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u8).unwrap();
+			let restored_flags_data =
+				<FlagsLE as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+
+	/// Cross account struct
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd(enforce_bytes = 1)]
+	pub struct FlagsBE {
+		#[bondrewd(bits = "0..1")]
+		pub a: bool,
+		#[bondrewd(bits = "1..2")]
+		pub b: bool,
+		#[bondrewd(bits = "2..7", endianness = "be")]
+		pub c: u8,
+		#[bondrewd(bits = "7..8")]
+		pub d: bool,
+	}
+
+	#[test]
+	fn test_creation_from_flags_with_be_field() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = FlagsBE {
+			a: true,
+			b: true,
+			c: 5,
+			d: false,
+		};
+
+		let data_int = (1u8 << 7) + (1u8 << 6) + (5u8 << 1);
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<FlagsBE as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u8 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u8 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u8);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u8).unwrap();
+			let restored_flags_data =
+				<FlagsBE as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+
+	#[derive(AbiCoderFlags, Bitfields, Clone, Copy, PartialEq, Eq, Debug, Default)]
+	#[bondrewd()]
+	struct Data2Bytes {
+		#[bondrewd(bits = "0..1", endianness = "be")]
+		a: bool,
+		#[bondrewd(bits = "1..7", endianness = "be")]
+		b: u8,
+		#[bondrewd(bits = "7..23", endianness = "be")]
+		c: u16,
+	}
+
+	#[test]
+	fn test_creation_from_flags_with_bytes() {
+		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+
+		let data = Data2Bytes {
+			a: true,
+			b: 9,
+			c: 1023,
+		};
+
+		let data_int = ((1u32 << 23) + (9u32 << 17) + (1023u32 << 1)) << 8;
+
+		println!("{:?}", data_int.to_be_bytes());
+
+		let encoded_flags = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<Data2Bytes as evm_coder::abi::AbiWrite>::abi_write(&data, &mut writer);
+			writer.finish()
+		};
+
+		let encoded_u32 = {
+			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
+			<u32 as evm_coder::abi::AbiWrite>::abi_write(&data_int, &mut writer);
+			writer.finish()
+		};
+
+		similar_asserts::assert_eq!(encoded_flags, encoded_u32);
+
+		{
+			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_u32).unwrap();
+			let restored_flags_data =
+				<Data2Bytes as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			assert_eq!(restored_flags_data, data);
+		}
+	}
+}

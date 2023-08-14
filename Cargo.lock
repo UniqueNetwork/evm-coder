@@ -58,6 +58,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "bondrewd"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d1660fac8d3acced44dac64453fafedf5aab2de196b932c727e63e4ae42d1cc"
+dependencies = [
+ "bondrewd-derive",
+]
+
+[[package]]
+name = "bondrewd-derive"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "723da0dee1eef38edc021b0793f892bdc024500c6a5b0727a2efe16f0e0a6977"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "bstr"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -224,6 +244,7 @@ dependencies = [
 name = "evm-coder"
 version = "0.3.5"
 dependencies = [
+ "bondrewd",
  "derivative",
  "ethereum",
  "evm-coder-procedural",
