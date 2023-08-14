@@ -242,7 +242,7 @@ dependencies = [
 
 [[package]]
 name = "evm-coder"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "bondrewd",
  "derivative",
@@ -259,7 +259,7 @@ dependencies = [
 
 [[package]]
 name = "evm-coder-procedural"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "Inflector",
  "hex",
