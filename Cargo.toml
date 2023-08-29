@@ -3,11 +3,11 @@ members = ['./procedural']
 package.documentation = "https://docs.rs/evm-coder"
 package.license = "MIT OR Apache-2.0"
 package.repository = "https://github.com/UniqueNetwork/evm-coder"
-package.version = "0.3.6"
+package.version = "0.4.2"
 resolver = "2"
 
 [workspace.dependencies]
-evm-coder-procedural = { path = "./procedural", version = "0.3.6" }
+evm-coder-procedural = { path = "./procedural", version = "0.4.2" }
 
 [package]
 description = "EVM call decoding/encoding proc macros"
