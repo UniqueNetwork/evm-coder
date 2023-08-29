@@ -1,6 +1,6 @@
 use quote::quote;
 
-use super::{derive_struct::impl_can_be_placed_in_vec, extract_docs};
+use super::extract_docs;
 
 pub fn impl_solidity_option<'a>(
 	docs: &[String],
@@ -84,23 +84,18 @@ pub fn impl_enum_abi_type(name: &syn::Ident) -> proc_macro2::TokenStream {
 	quote! {
 		impl ::evm_coder::abi::AbiType for #name {
 			const SIGNATURE: ::evm_coder::custom_signature::SignatureUnit = <u8 as ::evm_coder::abi::AbiType>::SIGNATURE;
-
-			fn is_dynamic() -> bool {
-				<u8 as ::evm_coder::abi::AbiType>::is_dynamic()
-			}
-			fn size() -> usize {
-				<u8 as ::evm_coder::abi::AbiType>::size()
-			}
+			const IS_DYNAMIC: bool = <u8 as ::evm_coder::abi::AbiType>::IS_DYNAMIC;
+			const HEAD_WORDS: u32 = <u8 as ::evm_coder::abi::AbiType>::HEAD_WORDS;
 		}
 	}
 }
 
 pub fn impl_enum_abi_read(name: &syn::Ident) -> proc_macro2::TokenStream {
 	quote!(
-		impl ::evm_coder::abi::AbiRead for #name {
-			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Self> {
+		impl ::evm_coder::abi::AbiDecode for #name {
+			fn dec(reader: &mut ::evm_coder::abi::AbiDecoder) -> ::evm_coder::abi::Result<Self> {
 				Ok(
-					<u8 as ::evm_coder::abi::AbiRead>::abi_read(reader)?
+					<u8 as ::evm_coder::abi::AbiDecode>::dec(reader)?
 						.try_into()?
 				)
 			}
@@ -110,9 +105,9 @@ pub fn impl_enum_abi_read(name: &syn::Ident) -> proc_macro2::TokenStream {
 
 pub fn impl_enum_abi_write(name: &syn::Ident) -> proc_macro2::TokenStream {
 	quote!(
-		impl ::evm_coder::abi::AbiWrite for #name {
-			fn abi_write(&self, writer: &mut ::evm_coder::abi::AbiWriter) {
-				::evm_coder::abi::AbiWrite::abi_write(&(*self as u8), writer);
+		impl ::evm_coder::abi::AbiEncode for #name {
+			fn enc(&self, writer: &mut ::evm_coder::abi::AbiEncoder) {
+				::evm_coder::abi::AbiEncode::enc(&(*self as u8), writer);
 			}
 		}
 	)
@@ -210,7 +205,6 @@ pub fn expand_enum(
 
 	let from = impl_enum_from_u8(name, enum_options.clone());
 	let solidity_option = impl_solidity_option(&docs, name, enum_options.clone());
-	let can_be_plcaed_in_vec = impl_can_be_placed_in_vec(name);
 	let abi_type = impl_enum_abi_type(name);
 	let abi_read = impl_enum_abi_read(name);
 	let abi_write = impl_enum_abi_write(name);
@@ -219,7 +213,6 @@ pub fn expand_enum(
 	Ok(quote! {
 		#from
 		#solidity_option
-		#can_be_plcaed_in_vec
 		#abi_type
 		#abi_read
 		#abi_write

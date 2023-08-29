@@ -1,5 +1,5 @@
 mod test_struct {
-	use evm_coder::types::Bytes;
+	use evm_coder::types::{Bytes, Bytes4, BytesFixed};
 	use evm_coder_procedural::AbiCoder;
 
 	#[test]
@@ -139,60 +139,59 @@ mod test_struct {
 
 	#[test]
 	fn impl_abi_type_is_dynamic() {
-		assert!(!<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(!<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct2MixedParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(!<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(!<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),);
-		assert!(<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::is_dynamic(),);
+		assert!(!<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(!<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(<TypeStruct2MixedParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(!<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(!<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
+		assert!(<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::IS_DYNAMIC,);
 	}
 
 	#[test]
 	fn impl_abi_type_size() {
-		const ABI_ALIGNMENT: usize = 32;
 		assert_eq!(
-			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT
+			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			1
 		);
 		assert_eq!(
-			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT
+			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			1
 		);
 		assert_eq!(
-			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT * 2
+			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			2
 		);
 		assert_eq!(
-			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT * 2
+			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			2
 		);
 		assert_eq!(
-			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT * 2
+			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			2
 		);
 		assert_eq!(
-			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT
+			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			1
 		);
 		assert_eq!(
-			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT * 3
+			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			3
 		);
 		assert_eq!(
-			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT
+			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			1
 		);
 		assert_eq!(
-			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT * 3
+			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			2
 		);
 		assert_eq!(
-			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::size(),
-			ABI_ALIGNMENT * 5
+			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			3
 		);
 	}
 
@@ -324,108 +323,108 @@ mod test_struct {
 	#[test]
 	fn impl_abi_type_is_dynamic_same_for_structs() {
 		assert_eq!(
-			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct1SimpleParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct1SimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
 		);
 		assert_eq!(
-			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct1DynamicParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct1DynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct2SimpleParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct2SimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct2DynamicParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct2DynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct2MixedParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct2MixedParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 		assert_eq!(
-			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::is_dynamic(),
-			<TupleStruct3DerivedMixedParam as evm_coder::abi::AbiType>::is_dynamic()
+			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<TupleStruct3DerivedMixedParam as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 	}
 
 	#[test]
 	fn impl_abi_type_size_same_for_structs() {
 		assert_eq!(
-			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct1SimpleParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct1SimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct1SimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct1DynamicParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct1DynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct1DynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct2SimpleParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct2SimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct2SimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct2DynamicParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct2DynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct2DynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct2MixedParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct2MixedParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct2MixedParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct1DerivedSimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct2DerivedSimpleParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct1DerivedDynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct2DerivedDynamicParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 		assert_eq!(
-			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::size(),
-			<TupleStruct3DerivedMixedParam as evm_coder::abi::AbiType>::size()
+			<TypeStruct3DerivedMixedParam as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<TupleStruct3DerivedMixedParam as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 	}
 
-	const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+	const FUNCTION_IDENTIFIER: Bytes4 = BytesFixed(u32::to_be_bytes(0xdeadbeef));
 
 	fn test_impl<Tuple, TupleStruct, TypeStruct>(
 		tuple_data: Tuple,
 		tuple_struct_data: TupleStruct,
 		type_struct_data: TypeStruct,
 	) where
-		TypeStruct: evm_coder::abi::AbiWrite
-			+ evm_coder::abi::AbiRead
+		TypeStruct: evm_coder::abi::AbiEncode
+			+ evm_coder::abi::AbiDecode
 			+ std::cmp::PartialEq
 			+ std::fmt::Debug,
-		TupleStruct: evm_coder::abi::AbiWrite
-			+ evm_coder::abi::AbiRead
+		TupleStruct: evm_coder::abi::AbiEncode
+			+ evm_coder::abi::AbiDecode
 			+ std::cmp::PartialEq
 			+ std::fmt::Debug,
-		Tuple: evm_coder::abi::AbiWrite
-			+ evm_coder::abi::AbiRead
+		Tuple: evm_coder::abi::AbiEncode
+			+ evm_coder::abi::AbiDecode
 			+ std::cmp::PartialEq
 			+ std::fmt::Debug,
 	{
@@ -437,41 +436,24 @@ mod test_struct {
 		similar_asserts::assert_eq!(encoded_tuple, encoded_tuple_struct);
 
 		{
-			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_tuple).unwrap();
-			let restored_struct_data = <TypeStruct>::abi_read(&mut decoder).unwrap();
+			let (_, restored_struct_data) = <TypeStruct>::abi_decode_call(&encoded_tuple).unwrap();
 			assert_eq!(restored_struct_data, type_struct_data);
-		}
-		{
-			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_tuple).unwrap();
-			let restored_struct_data = <TupleStruct>::abi_read(&mut decoder).unwrap();
-			assert_eq!(restored_struct_data, tuple_struct_data);
 		}
 
 		{
-			let (_, mut decoder) =
-				evm_coder::abi::AbiReader::new_call(&encoded_type_struct).unwrap();
-			let restored_tuple_data = <Tuple>::abi_read(&mut decoder).unwrap();
-			assert_eq!(restored_tuple_data, tuple_data);
-		}
-		{
-			let (_, mut decoder) =
-				evm_coder::abi::AbiReader::new_call(&encoded_tuple_struct).unwrap();
-			let restored_tuple_data = <Tuple>::abi_read(&mut decoder).unwrap();
+			let (_, restored_tuple_data) = <Tuple>::abi_decode_call(&encoded_tuple_struct).unwrap();
 			assert_eq!(restored_tuple_data, tuple_data);
 		}
 	}
 
 	fn test_abi_write_impl<A>(data: &A) -> Vec<u8>
 	where
-		A: evm_coder::abi::AbiWrite
-			+ evm_coder::abi::AbiRead
+		A: evm_coder::abi::AbiEncode
+			+ evm_coder::abi::AbiDecode
 			+ std::cmp::PartialEq
 			+ std::fmt::Debug,
 	{
-		let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
-		data.abi_write(&mut writer);
-
-		writer.finish()
+		data.abi_encode_call(FUNCTION_IDENTIFIER)
 	}
 
 	#[test]
@@ -654,7 +636,10 @@ mod test_struct {
 }
 
 mod test_enum {
-	use evm_coder::AbiCoder;
+	use evm_coder::{
+		types::{Bytes4, BytesFixed},
+		AbiCoder, AbiDecode, AbiEncode,
+	};
 
 	/// Some docs
 	/// At multi
@@ -694,41 +679,31 @@ mod test_enum {
 	#[test]
 	fn impl_abi_type_is_dynamic_same_for_structs() {
 		assert_eq!(
-			<Color as evm_coder::abi::AbiType>::is_dynamic(),
-			<u8 as evm_coder::abi::AbiType>::is_dynamic()
+			<Color as evm_coder::abi::AbiType>::IS_DYNAMIC,
+			<u8 as evm_coder::abi::AbiType>::IS_DYNAMIC
 		);
 	}
 
 	#[test]
 	fn impl_abi_type_size_same_for_structs() {
 		assert_eq!(
-			<Color as evm_coder::abi::AbiType>::size(),
-			<u8 as evm_coder::abi::AbiType>::size()
+			<Color as evm_coder::abi::AbiType>::HEAD_WORDS,
+			<u8 as evm_coder::abi::AbiType>::HEAD_WORDS
 		);
 	}
 
 	#[test]
 	fn test_coder() {
-		const FUNCTION_IDENTIFIER: u32 = 0xdeadbeef;
+		const FUNCTION_IDENTIFIER: Bytes4 = BytesFixed(u32::to_be_bytes(0xdeadbeef));
 
-		let encoded_enum = {
-			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
-			<Color as evm_coder::abi::AbiWrite>::abi_write(&Color::Green, &mut writer);
-			writer.finish()
-		};
+		let encoded_enum = { Color::Green.abi_encode_call(FUNCTION_IDENTIFIER) };
 
-		let encoded_u8 = {
-			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);
-			<u8 as evm_coder::abi::AbiWrite>::abi_write(&(Color::Green as u8), &mut writer);
-			writer.finish()
-		};
+		let encoded_u8 = { (Color::Green as u8).abi_encode_call(FUNCTION_IDENTIFIER) };
 
 		similar_asserts::assert_eq!(encoded_enum, encoded_u8);
 
 		{
-			let (_, mut decoder) = evm_coder::abi::AbiReader::new_call(&encoded_enum).unwrap();
-			let restored_enum_data =
-				<Color as evm_coder::abi::AbiRead>::abi_read(&mut decoder).unwrap();
+			let (_, restored_enum_data) = Color::abi_decode_call(&encoded_enum).unwrap();
 			assert_eq!(restored_enum_data, Color::Green);
 		}
 	}
@@ -1052,8 +1027,6 @@ mod test_flags {
 		};
 
 		let data_int = ((1u32 << 23) + (9u32 << 17) + (1023u32 << 1)) << 8;
-
-		println!("{:?}", data_int.to_be_bytes());
 
 		let encoded_flags = {
 			let mut writer = evm_coder::abi::AbiWriter::new_call(FUNCTION_IDENTIFIER);

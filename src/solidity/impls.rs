@@ -3,27 +3,26 @@ use core::fmt;
 use primitive_types::{H160, U256};
 
 use crate::{
-	sealed,
 	solidity::{SolidityTupleTy, SolidityTypeName, TypeCollector},
 	types::*,
 };
 
 macro_rules! solidity_type_name {
-    ($($ty:ty => $name:literal $simple:literal = $default:literal),* $(,)?) => {
-        $(
-            impl SolidityTypeName for $ty {
-                fn solidity_name(writer: &mut impl core::fmt::Write, _tc: &TypeCollector) -> core::fmt::Result {
-                    write!(writer, $name)
-                }
+	($($ty:ty => $name:literal $simple:literal = $default:literal),* $(,)?) => {
+		$(
+			impl SolidityTypeName for $ty {
+				fn solidity_name(writer: &mut impl core::fmt::Write, _tc: &TypeCollector) -> core::fmt::Result {
+					write!(writer, $name)
+				}
 				fn is_simple() -> bool {
 					$simple
 				}
 				fn solidity_default(writer: &mut impl core::fmt::Write, _tc: &TypeCollector) -> core::fmt::Result {
 					write!(writer, $default)
 				}
-            }
-        )*
-    };
+			}
+		)*
+	};
 }
 
 solidity_type_name! {
@@ -69,7 +68,7 @@ impl<T: SolidityTypeName, E: 'static> SolidityTypeName for Result<T, E> {
 	}
 }
 
-impl<T: SolidityTypeName + sealed::CanBePlacedInVec> SolidityTypeName for Vec<T> {
+impl<T: SolidityTypeName> SolidityTypeName for Vec<T> {
 	fn solidity_name(writer: &mut impl fmt::Write, tc: &TypeCollector) -> fmt::Result {
 		T::solidity_name(writer, tc)?;
 		write!(writer, "[]")
@@ -85,8 +84,8 @@ impl<T: SolidityTypeName + sealed::CanBePlacedInVec> SolidityTypeName for Vec<T>
 }
 
 macro_rules! count {
-    () => (0usize);
-    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
+	() => (0usize);
+	( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
 }
 
 macro_rules! impl_tuples {

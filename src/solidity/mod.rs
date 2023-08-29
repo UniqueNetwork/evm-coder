@@ -366,11 +366,11 @@ impl<F: SolidityFunctions> SolidityInterface<F> {
 		for doc in self.docs {
 			writeln!(out, "///{doc}")?;
 		}
-		if self.selector != ZERO_BYTES {
+		if self.selector.0 != ZERO_BYTES {
 			writeln!(
 				out,
 				"/// @dev the ERC-165 identifier for this interface is 0x{:0>8x}",
-				u32::from_be_bytes(self.selector)
+				u32::from_be_bytes(self.selector.0)
 			)?;
 		}
 		if is_impl {

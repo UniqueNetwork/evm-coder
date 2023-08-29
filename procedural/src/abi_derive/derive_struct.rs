@@ -84,22 +84,12 @@ pub fn map_field_to_type(field: &syn::Field) -> &syn::Type {
 	&field.ty
 }
 
-pub fn impl_can_be_placed_in_vec(ident: &syn::Ident) -> TokenStream {
-	quote! {
-		impl ::evm_coder::sealed::CanBePlacedInVec for #ident {}
-	}
-}
-
 pub fn impl_struct_abi_type(name: &syn::Ident, tuple_type: &TokenStream) -> TokenStream {
 	quote! {
 		impl ::evm_coder::abi::AbiType for #name {
 			const SIGNATURE: ::evm_coder::custom_signature::SignatureUnit = <#tuple_type as ::evm_coder::abi::AbiType>::SIGNATURE;
-			fn is_dynamic() -> bool {
-				<#tuple_type as ::evm_coder::abi::AbiType>::is_dynamic()
-			}
-			fn size() -> usize {
-				<#tuple_type as ::evm_coder::abi::AbiType>::size()
-			}
+			const IS_DYNAMIC: bool = <#tuple_type as ::evm_coder::abi::AbiType>::IS_DYNAMIC;
+			const HEAD_WORDS: u32 = <#tuple_type as ::evm_coder::abi::AbiType>::HEAD_WORDS;
 		}
 	}
 }
@@ -111,9 +101,9 @@ pub fn impl_struct_abi_read(
 	struct_from_tuple: &TokenStream,
 ) -> TokenStream {
 	quote!(
-		impl ::evm_coder::abi::AbiRead for #name {
-			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Self> {
-				let #tuple_names = <#tuple_type as ::evm_coder::abi::AbiRead>::abi_read(reader)?;
+		impl ::evm_coder::abi::AbiDecode for #name {
+			fn dec(reader: &mut ::evm_coder::abi::AbiDecoder) -> ::evm_coder::abi::Result<Self> {
+				let #tuple_names = <#tuple_type as ::evm_coder::abi::AbiDecode>::dec(reader)?;
 				Ok(#struct_from_tuple)
 			}
 		}
@@ -127,9 +117,9 @@ pub fn impl_struct_abi_write(
 	tuple_data: &TokenStream,
 ) -> TokenStream {
 	quote!(
-		impl ::evm_coder::abi::AbiWrite for #name {
-			fn abi_write(&self, writer: &mut ::evm_coder::abi::AbiWriter) {
-				<#tuple_type as ::evm_coder::abi::AbiWrite>::abi_write(&#tuple_data, writer)
+		impl ::evm_coder::abi::AbiEncode for #name {
+			fn enc(&self, writer: &mut ::evm_coder::abi::AbiEncoder) {
+				<#tuple_type as ::evm_coder::abi::AbiEncode>::enc(&#tuple_data, writer)
 			}
 		}
 	)
@@ -254,7 +244,6 @@ pub fn expand_struct(
 	let tuple_names = tuple_names(is_named_fields, field_names.clone());
 	let struct_from_tuple = struct_from_tuple(name, is_named_fields, field_names.clone());
 
-	let can_be_plcaed_in_vec = impl_can_be_placed_in_vec(name);
 	let abi_type = impl_struct_abi_type(name, &tuple_type);
 	let abi_read = impl_struct_abi_read(name, &tuple_type, &tuple_names, &struct_from_tuple);
 	let abi_write = impl_struct_abi_write(name, is_named_fields, &tuple_ref_type, &tuple_data);
@@ -263,7 +252,6 @@ pub fn expand_struct(
 		impl_struct_solidity_type_name(name, field_types.clone(), params_count);
 
 	Ok(quote! {
-		#can_be_plcaed_in_vec
 		#abi_type
 		#abi_read
 		#abi_write

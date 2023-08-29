@@ -13,13 +13,14 @@
 //! - [`ToLog`]
 //! - [`AbiCoder`]
 
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 #![macro_use]
 #![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use abi::{AbiRead, AbiReader, AbiWriter};
+extern crate self as evm_coder;
+
 pub use evm_coder_procedural::{event_topic, fn_selector};
 pub mod abi;
 pub use events::{ToLog, ToTopic};
@@ -89,7 +90,6 @@ pub use evm_coder_procedural::solidity_interface;
 /// - [`AbiType`](abi::AbiType)
 /// - [`AbiRead`](abi::AbiRead)
 /// - [`AbiWrite`](abi::AbiWrite)
-/// - [`CanBePlacedInVec`](sealed::CanBePlacedInVec)
 /// - [`SolidityTypeName`](solidity::SolidityTypeName)
 /// - [`SolidityStructTy`](solidity::SolidityStructTy) - for struct
 /// - [`SolidityEnumTy`](solidity::SolidityEnumTy) - for enum
@@ -133,21 +133,15 @@ pub use evm_coder_procedural::ToLog;
 #[doc(hidden)]
 pub use sha3_const;
 
+pub use self::abi::{AbiDecode, AbiDecoder, AbiEncode, AbiEncoder};
+use self::{abi::Error, types::*};
+
 // Api of those modules shouldn't be consumed directly, it is only exported for usage in proc macros
 #[doc(hidden)]
 pub mod events;
 #[doc(hidden)]
 #[cfg(feature = "stubgen")]
 pub mod solidity;
-
-/// Sealed traits.
-pub mod sealed {
-	/// Not every type should be directly placed in vec.
-	/// Vec encoding is not memory efficient, as every item will be padded
-	/// to 32 bytes.
-	/// Instead you should use specialized types (`bytes` in case of `Vec<u8>`)
-	pub trait CanBePlacedInVec {}
-}
 
 /// Solidity type definitions (aliases from solidity name to rust type)
 /// To be used in [`solidity_interface`] definitions, to make sure there is no
@@ -156,12 +150,16 @@ pub mod types {
 	#![allow(non_camel_case_types, missing_docs)]
 
 	#[cfg(not(feature = "std"))]
-	use alloc::vec::Vec;
+	pub use alloc::{vec, vec::Vec};
+	use core::marker::PhantomData;
+	#[cfg(feature = "std")]
+	pub use std::vec::Vec;
 
 	use primitive_types::{H160, H256, U256};
 
+	use crate::abi::AbiDecodeZero;
+
 	pub type Address = H160;
-	pub type Bytes4 = [u8; 4];
 	pub type Topic = H256;
 
 	#[cfg(not(feature = "std"))]
@@ -171,6 +169,29 @@ pub mod types {
 
 	#[derive(Default, Debug, PartialEq, Eq, Clone)]
 	pub struct Bytes(pub Vec<u8>);
+	#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+	pub struct BytesFixed<const S: usize>(pub [u8; S]);
+	pub type Bytes4 = BytesFixed<4>;
+
+	/// Enforce value to be zero.
+	/// This type will always encode as evm zero, and will fail on decoding if not zero.
+	#[derive(Debug, PartialEq, Clone)]
+	pub struct Zero<T>(PhantomData<T>);
+	impl<T> Zero<T> {
+		pub fn new() -> Self {
+			Self(PhantomData)
+		}
+	}
+	impl<T> Default for Zero<T> {
+		fn default() -> Self {
+			Self::new()
+		}
+	}
+
+	pub enum MaybeZero<T: AbiDecodeZero> {
+		Zero(Zero<T>),
+		NonZero(T),
+	}
 
 	//#region Special types
 	/// Makes function payable
@@ -215,6 +236,19 @@ pub mod types {
 			self.len() == 0
 		}
 	}
+
+	impl<const S: usize> Default for BytesFixed<S> {
+		fn default() -> Self {
+			Self([0; S])
+		}
+	}
+	// This can't be implemented the other way
+	#[allow(clippy::from_over_into)]
+	impl<const S: usize> Into<Vec<u8>> for BytesFixed<S> {
+		fn into(self) -> Vec<u8> {
+			self.0.into()
+		}
+	}
 }
 
 /// Parseable EVM call, this trait should be implemented with [`solidity_interface`] macro
@@ -224,14 +258,23 @@ pub trait Call: Sized {
 	/// # Errors
 	///
 	/// One of call arguments has bad encoding, or value is invalid for the target type
-	fn parse(selector: types::Bytes4, input: &mut AbiReader) -> abi::Result<Option<Self>>;
+	fn parse(selector: Bytes4, input: &[u8]) -> abi::Result<Option<Self>>;
+	fn parse_full(input: &[u8]) -> abi::Result<Option<Self>> {
+		if input.len() < 4 {
+			return Err(Error::OutOfOffset);
+		}
+		let mut selector = [0; 4];
+		selector.copy_from_slice(&input[..4]);
+
+		Self::parse(BytesFixed(selector), &input[4..])
+	}
 }
 
 /// Type callable with ethereum message, may be implemented by [`solidity_interface`] macro
 /// on interface implementation, or for externally-owned real EVM contract
 pub trait Callable<C: Call>: Contract {
 	/// Call contract using specified call data
-	fn call(&mut self, call: types::Msg<C>) -> ResultWithPostInfoOf<Self, AbiWriter>;
+	fn call(&mut self, call: types::Msg<C>) -> ResultWithPostInfoOf<Self, Vec<u8>>;
 }
 
 /// Contract specific result type
@@ -323,22 +366,22 @@ pub enum ERC165Call {
 	/// implements specified interface
 	SupportsInterface {
 		/// Requested interface
-		interface_id: types::Bytes4,
+		interface_id: Bytes4,
 	},
 }
 
 impl ERC165Call {
 	/// ERC165 selector is provided by standard
-	pub const INTERFACE_ID: types::Bytes4 = u32::to_be_bytes(0x01ff_c9a7);
+	pub const INTERFACE_ID: Bytes4 = BytesFixed(u32::to_be_bytes(0x01ff_c9a7));
 }
 
 impl Call for ERC165Call {
-	fn parse(selector: types::Bytes4, input: &mut AbiReader) -> abi::Result<Option<Self>> {
+	fn parse(selector: Bytes4, input: &[u8]) -> abi::Result<Option<Self>> {
 		if selector != Self::INTERFACE_ID {
 			return Ok(None);
 		}
 		Ok(Some(Self::SupportsInterface {
-			interface_id: types::Bytes4::abi_read(input)?,
+			interface_id: Bytes4::abi_decode(input)?,
 		}))
 	}
 }
@@ -378,7 +421,10 @@ mod tests {
 
 	#[test]
 	fn function_selector_generation() {
-		assert_eq!(fn_selector!(transfer(address, uint256)), 0xa9059cbb);
+		assert_eq!(
+			fn_selector!(transfer(address, uint256)),
+			BytesFixed(u32::to_be_bytes(0xa9059cbb))
+		);
 	}
 
 	#[test]

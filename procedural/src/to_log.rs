@@ -57,7 +57,7 @@ impl Event {
 			return Err(syn::Error::new(
 				variant.fields.span(),
 				"expected named fields",
-			))
+			));
 		};
 		let mut fields = Vec::new();
 		for field in &named.named {
@@ -122,9 +122,11 @@ impl Event {
 				#(
 					topics.push(#indexed.to_topic());
 				)*
-				#(
-					#plain.abi_write(&mut writer);
-				)*
+				::evm_coder::ethereum::Log {
+					address: contract,
+					topics,
+					data: (#(#plain,)*).abi_encode(),
+				}
 			}
 		}
 	}
@@ -195,7 +197,7 @@ impl Events {
 					use core::fmt::Write;
 					let interface = SolidityInterface {
 						docs: &[],
-						selector: [0; 4],
+						selector: ::evm_coder::types::BytesFixed([0; 4]),
 						name: #solidity_name,
 						is: &[],
 						functions: (#(
@@ -213,18 +215,12 @@ impl Events {
 			impl ::evm_coder::events::ToLog for #name {
 				fn to_log(&self, contract: Address) -> ::evm_coder::ethereum::Log {
 					use ::evm_coder::events::ToTopic;
-					use ::evm_coder::abi::AbiWrite;
-					let mut writer = ::evm_coder::abi::AbiWriter::new();
+					use ::evm_coder::abi::AbiEncode;
 					let mut topics = Vec::new();
 					match self {
 						#(
 							#serializers,
 						)*
-					}
-					::evm_coder::ethereum::Log {
-						address: contract,
-						topics,
-						data: writer.finish(),
 					}
 				}
 			}

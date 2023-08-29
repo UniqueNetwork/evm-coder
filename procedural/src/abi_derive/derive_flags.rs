@@ -4,12 +4,6 @@ use quote::quote;
 use super::extract_docs;
 use crate::structs::common::{BitMath, Endianness, FieldInfo, StructInfo};
 
-pub fn impl_can_be_placed_in_vec(ident: &syn::Ident) -> TokenStream {
-	quote! {
-		impl ::evm_coder::sealed::CanBePlacedInVec for #ident {}
-	}
-}
-
 fn align_size(name: &syn::Ident, total_bytes: usize) -> syn::Result<usize> {
 	Ok(match total_bytes {
 		1 => 1,
@@ -43,12 +37,8 @@ pub fn impl_struct_abi_type(name: &syn::Ident, total_bytes: usize) -> syn::Resul
 	Ok(quote! {
 		impl ::evm_coder::abi::AbiType for #name {
 			const SIGNATURE: ::evm_coder::custom_signature::SignatureUnit = <(#align_type) as ::evm_coder::abi::AbiType>::SIGNATURE;
-			fn is_dynamic() -> bool {
-				<(#align_type) as ::evm_coder::abi::AbiType>::is_dynamic()
-			}
-			fn size() -> usize {
-				<(#align_type) as ::evm_coder::abi::AbiType>::size()
-			}
+			const IS_DYNAMIC: bool = <(#align_type) as ::evm_coder::abi::AbiType>::IS_DYNAMIC;
+			const HEAD_WORDS: u32 = <(#align_type) as ::evm_coder::abi::AbiType>::HEAD_WORDS;
 		}
 	})
 }
@@ -59,9 +49,18 @@ pub fn impl_struct_abi_read(name: &syn::Ident, total_bytes: usize) -> syn::Resul
 		quote! { value[#i] }
 	});
 	Ok(quote!(
-		impl ::evm_coder::abi::AbiRead for #name {
-			fn abi_read(reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Self> {
-				let value = reader.bytes_padleft::<#aligned_size>()?;
+		impl ::evm_coder::abi::AbiDecode for #name {
+			fn dec(reader: &mut ::evm_coder::abi::AbiDecoder) -> ::evm_coder::abi::Result<Self> {
+				use ::evm_coder::abi::ABI_WORD_SIZE;
+				let word = reader.get_head()?;
+				let mut value = [0; #aligned_size];
+				value.copy_from_slice(&word[ABI_WORD_SIZE as usize - #aligned_size..ABI_WORD_SIZE as usize]);
+				if word[0..(ABI_WORD_SIZE as usize - #aligned_size)]
+					.iter()
+					.any(|&b| b != 0)
+				{
+					return Err(::evm_coder::abi::Error::InvalidRange);
+				};
 				Ok(#name::from_bytes([#(#bytes),*]))
 			}
 		}
@@ -70,26 +69,14 @@ pub fn impl_struct_abi_read(name: &syn::Ident, total_bytes: usize) -> syn::Resul
 
 pub fn impl_struct_abi_write(name: &syn::Ident, total_bytes: usize) -> syn::Result<TokenStream> {
 	let aligned_size = align_size(name, total_bytes)?;
-	// let bytes = (0..aligned_size).map(|i| {
-	// 	if total_bytes < 1 + i {
-	// 		quote! { 0 }
-	// 	} else {
-	// 		let index = total_bytes - 1 - i;
-	// 		quote! { value[#index] }
-	// 	}
-	// });
-	let bytes = (0..aligned_size).map(|i| {
-		if i >= total_bytes {
-			quote! { 0 }
-		} else {
-			quote! { value[#i] }
-		}
-	});
 	Ok(quote!(
-		impl ::evm_coder::abi::AbiWrite for #name {
-			fn abi_write(&self, writer: &mut ::evm_coder::abi::AbiWriter) {
+		impl ::evm_coder::abi::AbiEncode for #name {
+			fn enc(&self, writer: &mut ::evm_coder::abi::AbiEncoder) {
+				use ::evm_coder::abi::ABI_WORD_SIZE;
 				let value = self.clone().into_bytes();
-				writer.bytes_padleft(&[#(#bytes),*]);
+				let mut word = [0; ABI_WORD_SIZE as usize];
+				word[ABI_WORD_SIZE as usize - #aligned_size..ABI_WORD_SIZE as usize].copy_from_slice(&value);
+				writer.append_head(word);
 			}
 		}
 	))
@@ -222,8 +209,7 @@ pub fn expand_flags(ds: &syn::DataStruct, ast: &syn::DeriveInput) -> syn::Result
 	if let Some(field) = struct_info
 		.fields
 		.iter()
-		.filter(|field| field.bit_size() > 8 && *field.attrs.endianness != Endianness::Big)
-		.next()
+		.find(|field| field.bit_size() > 8 && *field.attrs.endianness != Endianness::Big)
 	{
 		return Err(syn::Error::new(
 			field.name.span(),
@@ -232,7 +218,6 @@ pub fn expand_flags(ds: &syn::DataStruct, ast: &syn::DeriveInput) -> syn::Result
 	}
 
 	let total_bytes = struct_info.total_bytes();
-	let can_be_plcaed_in_vec = impl_can_be_placed_in_vec(name);
 	let abi_type = impl_struct_abi_type(name, total_bytes)?;
 	let abi_read = impl_struct_abi_read(name, total_bytes)?;
 	let abi_write = impl_struct_abi_write(name, total_bytes)?;
@@ -240,7 +225,6 @@ pub fn expand_flags(ds: &syn::DataStruct, ast: &syn::DeriveInput) -> syn::Result
 		impl_struct_solidity_type(name, &docs, total_bytes, struct_info.fields.iter())?;
 	let solidity_type_name = impl_struct_solidity_type_name(name);
 	Ok(quote! {
-		#can_be_plcaed_in_vec
 		#abi_type
 		#abi_read
 		#abi_write

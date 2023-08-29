@@ -37,7 +37,7 @@ pub fn fn_selector(input: TokenStream) -> TokenStream {
 	let selector = fn_selector_str(&input);
 
 	(quote! {
-		#selector
+		::evm_coder::types::BytesFixed(u32::to_be_bytes(#selector))
 	})
 	.into()
 }

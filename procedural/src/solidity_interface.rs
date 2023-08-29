@@ -11,8 +11,8 @@ use syn::{
 	parenthesized,
 	parse::{Parse, ParseStream},
 	spanned::Spanned,
-	Expr, FnArg, Generics, Ident, ImplItem, ImplItemMethod, ItemImpl, Lit, LitInt, LitStr, Meta,
-	MetaNameValue, PatType, Path, PathArguments, ReturnType, Token, Type,
+	Expr, FnArg, Generics, Ident, ImplItem, ImplItemMethod, Index, ItemImpl, Lit, LitInt, LitStr,
+	Meta, MetaNameValue, PatType, Path, PathArguments, ReturnType, Token, Type,
 };
 
 use crate::{
@@ -38,7 +38,7 @@ impl Is {
 	fn expand_interface_id(&self) -> proc_macro2::TokenStream {
 		let pascal_call_name = &self.pascal_call_name;
 		quote! {
-			interface_id ^= u32::from_be_bytes(#pascal_call_name::interface_id());
+			interface_id ^= u32::from_be_bytes(#pascal_call_name::interface_id().0);
 		}
 	}
 
@@ -394,17 +394,11 @@ impl MethodArg {
 		}
 	}
 
-	fn expand_parse(&self) -> proc_macro2::TokenStream {
+	fn expand_extract_parsed(&self, i: usize) -> proc_macro2::TokenStream {
 		assert!(!self.is_special());
 		let name = &self.name;
-		let ty = &self.ty;
-		quote! {
-			#name: {
-				let value = <#ty as ::evm_coder::abi::AbiRead>::abi_read(reader)?;
-				if !is_dynamic {reader.bytes_read(<#ty as ::evm_coder::abi::AbiType>::size())};
-				value
-			}
-		}
+		let i = Index::from(i);
+		quote!(#name: parsed.#i)
 	}
 
 	fn expand_call_arg(&self) -> proc_macro2::TokenStream {
@@ -625,7 +619,7 @@ impl Method {
 					pos += 1;
 				}
 				let a = sum.finalize();
-				[a[0], a[1], a[2], a[3]]
+				::evm_coder::types::BytesFixed([a[0], a[1], a[2], a[3]])
 			};
 		}
 	}
@@ -633,7 +627,7 @@ impl Method {
 	fn expand_interface_id(&self) -> proc_macro2::TokenStream {
 		let screaming_name = &self.screaming_name;
 		quote! {
-			interface_id ^= u32::from_be_bytes(Self::#screaming_name);
+			interface_id ^= u32::from_be_bytes(Self::#screaming_name.0);
 		}
 	}
 
@@ -643,10 +637,12 @@ impl Method {
 		if self.has_normal_args {
 			let args_iter = self.args.iter().filter(|a| !a.is_special());
 			let arg_type = args_iter.clone().map(|a| &a.ty);
-			let parsers = args_iter.map(MethodArg::expand_parse);
+			let parsers = args_iter
+				.enumerate()
+				.map(|(i, m)| m.expand_extract_parsed(i));
 			quote! {
 				Self::#screaming_name => {
-					let is_dynamic = false #(|| <#arg_type as ::evm_coder::abi::AbiType>::is_dynamic())*;
+					let parsed = <(#(#arg_type,)*) as ::evm_coder::abi::AbiDecode>::abi_decode(reader)?;
 					return Ok(Some(Self::#pascal_name {
 						#(
 							#parsers,
@@ -700,9 +696,7 @@ impl Method {
 				let result = #result_macro_name!(result);
 				result.map(|post| {
 					<Self as ::evm_coder::Contract>::map_post(post, |res| {
-						let mut writer = ::evm_coder::abi::AbiWriter::default();
-						<_ as AbiWrite>::abi_write(&res, &mut writer);
-						writer
+						(res,).abi_encode()
 					})
 				})
 			}
@@ -753,7 +747,7 @@ impl Method {
 			SolidityFunction {
 				docs: &[#(#docs),*],
 				hide: #hide,
-				selector: u32::from_be_bytes(Self::#screaming_name),
+				selector: u32::from_be_bytes(Self::#screaming_name.0),
 				custom_signature: #custom_signature,
 				name: #camel_name,
 				mutability: #mutability,
@@ -934,7 +928,7 @@ impl SolidityInterface {
 
 		let expect_selector = self.info.expect_selector.map(|s| {
             quote! {
-                const _: () = assert!(#s == u32::from_be_bytes(<#call_name #gen_stub>::interface_id()), "selector mismatch, review contained function selectors");
+                const _: () = assert!(#s == u32::from_be_bytes(<#call_name #gen_stub>::interface_id().0), "selector mismatch, review contained function selectors");
             }
         });
 
@@ -967,7 +961,7 @@ impl SolidityInterface {
 					let mut interface_id = 0;
 					#(#interface_id)*
 					#(#inline_interface_id)*
-					u32::to_be_bytes(interface_id)
+					::evm_coder::types::BytesFixed(u32::to_be_bytes(interface_id))
 				}
 				/// Generate solidity definitions for methods described in this interface
 				#[cfg(feature = "stubgen")]
@@ -1008,8 +1002,7 @@ impl SolidityInterface {
 				}
 			}
 			impl #gen_ref ::evm_coder::Call for #call_name #gen_ref {
-				fn parse(method_id: ::evm_coder::types::Bytes4, reader: &mut ::evm_coder::abi::AbiReader) -> ::evm_coder::abi::Result<Option<Self>> {
-					use ::evm_coder::abi::AbiRead;
+				fn parse(method_id: ::evm_coder::types::Bytes4, reader: &[u8]) -> ::evm_coder::abi::Result<Option<Self>> {
 					match method_id {
 						::evm_coder::ERC165Call::INTERFACE_ID => return Ok(
 							::evm_coder::ERC165Call::parse(method_id, reader)?
@@ -1031,7 +1024,7 @@ impl SolidityInterface {
 			{
 				/// Is this contract implements specified ERC165 selector
 				pub fn supports_interface(this: &#name, interface_id: ::evm_coder::types::Bytes4) -> bool {
-					interface_id != u32::to_be_bytes(0xffffff) && (
+					interface_id.0 != u32::to_be_bytes(0xffffff) && (
 						interface_id == ::evm_coder::ERC165Call::INTERFACE_ID ||
 						interface_id == Self::interface_id()
 						#(
@@ -1044,16 +1037,15 @@ impl SolidityInterface {
 			#gen_where
 			{
 				#[allow(unreachable_code)] // In case of no inner calls
-				fn call(&mut self, c: ::evm_coder::types::Msg<#call_name #gen_ref>) -> ::evm_coder::ResultWithPostInfoOf<Self, ::evm_coder::abi::AbiWriter> {
-					use ::evm_coder::abi::AbiWrite;
+				fn call(&mut self, c: ::evm_coder::types::Msg<#call_name #gen_ref>) -> ::evm_coder::ResultWithPostInfoOf<Self, ::evm_coder::types::Vec<u8>> {
+					use ::evm_coder::abi::AbiEncode;
 					match c.call {
 						#(
 							#call_variants,
 						)*
 						#call_name::ERC165Call(::evm_coder::ERC165Call::SupportsInterface {interface_id}, _) => {
-							let mut writer = ::evm_coder::abi::AbiWriter::default();
-							writer.bool(&<#call_name #gen_ref>::supports_interface(self, interface_id));
-							return Ok(<Self as ::evm_coder::Contract>::with_default_post(writer.into()));
+							let data = <#call_name #gen_ref>::supports_interface(self, interface_id).abi_encode();
+							return Ok(<Self as ::evm_coder::Contract>::with_default_post(data));
 						}
 						_ => {},
 					}
