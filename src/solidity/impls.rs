@@ -31,11 +31,27 @@ solidity_type_name! {
 	u64 => "uint64" true = "0",
 	u128 => "uint128" true = "0",
 	U256 => "uint256" true = "0",
-	Bytes4 => "bytes4" true = "bytes4(0)",
 	H160 => "address" true = "0x0000000000000000000000000000000000000000",
 	String => "string" false = "\"\"",
 	Bytes => "bytes" false = "hex\"\"",
 	bool => "bool" true = "false",
+}
+
+impl<const S: usize> SolidityTypeName for BytesFixed<S> {
+	fn solidity_name(writer: &mut impl core::fmt::Write, _tc: &TypeCollector) -> core::fmt::Result {
+		writer.write_fmt(format_args!("bytes{S}"))
+	}
+
+	fn is_simple() -> bool {
+		true
+	}
+
+	fn solidity_default(
+		writer: &mut impl core::fmt::Write,
+		_tc: &TypeCollector,
+	) -> core::fmt::Result {
+		writer.write_fmt(format_args!("bytes{S}(0)"))
+	}
 }
 
 impl SolidityTypeName for () {
