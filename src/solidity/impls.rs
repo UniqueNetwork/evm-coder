@@ -38,7 +38,7 @@ solidity_type_name! {
 }
 
 impl<const S: usize> SolidityTypeName for BytesFixed<S> {
-	fn solidity_name(writer: &mut impl core::fmt::Write, _tc: &TypeCollector) -> core::fmt::Result {
+	fn solidity_name(writer: &mut impl fmt::Write, _tc: &TypeCollector) -> fmt::Result {
 		writer.write_fmt(format_args!("bytes{S}"))
 	}
 
@@ -46,10 +46,7 @@ impl<const S: usize> SolidityTypeName for BytesFixed<S> {
 		true
 	}
 
-	fn solidity_default(
-		writer: &mut impl core::fmt::Write,
-		_tc: &TypeCollector,
-	) -> core::fmt::Result {
+	fn solidity_default(writer: &mut impl fmt::Write, _tc: &TypeCollector) -> fmt::Result {
 		writer.write_fmt(format_args!("bytes{S}(0)"))
 	}
 }
