@@ -25,7 +25,7 @@ evm-coder-procedural = { workspace = true }
 # Evm uses primitive-types for H160, H256 and others
 primitive-types = { version = "0.13.1", default-features = false }
 # Evm doesn't have reexports for log and others
-ethereum = { version = "0.15.0", default-features = false }
+ethereum = { git = "https://github.com/rust-ethereum/ethereum", rev = "3be0d8fd4c2ad1ba216b69ef65b9382612efc8ba", default-features = false }
 # We have tuple-heavy code in solidity.rs
 impl-trait-for-tuples = "0.2.2"
 
