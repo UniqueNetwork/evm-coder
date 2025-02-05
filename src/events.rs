@@ -31,8 +31,7 @@ impl ToTopic for H256 {
 
 impl ToTopic for U256 {
 	fn to_topic(&self) -> H256 {
-		let mut out = [0u8; 32];
-		self.to_big_endian(&mut out);
+		let out = self.to_big_endian();
 		H256(out)
 	}
 }

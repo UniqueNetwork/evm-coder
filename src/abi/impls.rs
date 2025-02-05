@@ -434,8 +434,7 @@ impl AbiType for U256 {
 }
 impl AbiEncode for U256 {
 	fn enc(&self, out: &mut AbiEncoder) {
-		let mut word = [0; ABI_WORD_SIZE as usize];
-		self.to_big_endian(&mut word);
+		let word = self.to_big_endian();
 		out.append_head(word)
 	}
 }
