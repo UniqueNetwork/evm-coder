@@ -17,7 +17,8 @@ use syn::{
 
 use crate::{
 	parse_ident_from_pat, parse_ident_from_path, parse_path, parse_path_segment,
-	pascal_ident_to_call, snake_ident_to_pascal, snake_ident_to_screaming,
+	pascal_ident_to_call, pascal_ident_to_consts_mod, snake_ident_to_pascal,
+	snake_ident_to_screaming,
 };
 
 struct Is {
@@ -453,6 +454,7 @@ mod kw {
 /// Rust methods are parsed into this structure when Solidity code is generated
 struct Method {
 	name: Ident,
+	consts_mod_name: Ident,
 	camel_name: String,
 	pascal_name: Ident,
 	screaming_name: Ident,
@@ -466,7 +468,7 @@ struct Method {
 	enum_attrs: Vec<TokenStream>,
 }
 impl Method {
-	fn try_from(value: &mut ImplItemMethod, variant_attrs: &BTreeSet<Ident>) -> syn::Result<Self> {
+	fn try_from(value: &mut ImplItemMethod, interface_info: &InterfaceInfo) -> syn::Result<Self> {
 		let mut info = MethodInfo {
 			rename_selector: None,
 			hide: false,
@@ -490,7 +492,7 @@ impl Method {
 					_ => unreachable!(),
 				};
 				docs.push(value);
-			} else if variant_attrs.contains(ident) {
+			} else if interface_info.enum_variant_attrs.contains(ident) {
 				let path = &attr.path;
 				let tokens = &attr.tokens;
 				extra_enum_attrs.push(quote! {#path #tokens});
@@ -561,6 +563,7 @@ impl Method {
 
 		Ok(Self {
 			name: ident.clone(),
+			consts_mod_name: pascal_ident_to_consts_mod(&interface_info.name),
 			camel_name,
 			pascal_name: snake_ident_to_pascal(ident),
 			screaming_name: snake_ident_to_screaming(ident),
@@ -611,11 +614,11 @@ impl Method {
 		let custom_signature = self.expand_custom_signature();
 		quote! {
 			const #screaming_name_signature: ::evm_coder::custom_signature::SignatureUnit = #custom_signature;
-			const #screaming_name: ::evm_coder::types::Bytes4 = {
+			pub const #screaming_name: ::evm_coder::types::Bytes4 = {
 				let mut sum = ::evm_coder::sha3_const::Keccak256::new();
 				let mut pos = 0;
-				while pos < Self::#screaming_name_signature.len {
-					sum = sum.update(&[Self::#screaming_name_signature.data[pos]; 1]);
+				while pos < #screaming_name_signature.len {
+					sum = sum.update(&[#screaming_name_signature.data[pos]; 1]);
 					pos += 1;
 				}
 				let a = sum.finalize();
@@ -626,14 +629,16 @@ impl Method {
 
 	fn expand_interface_id(&self) -> proc_macro2::TokenStream {
 		let screaming_name = &self.screaming_name;
+		let consts_mod_name = &self.consts_mod_name;
 		quote! {
-			interface_id ^= u32::from_be_bytes(Self::#screaming_name.0);
+			interface_id ^= u32::from_be_bytes(#consts_mod_name::#screaming_name.0);
 		}
 	}
 
 	fn expand_parse(&self) -> proc_macro2::TokenStream {
 		let pascal_name = &self.pascal_name;
 		let screaming_name = &self.screaming_name;
+		let consts_mod_name = &self.consts_mod_name;
 		if self.has_normal_args {
 			let args_iter = self.args.iter().filter(|a| !a.is_special());
 			let arg_type = args_iter.clone().map(|a| &a.ty);
@@ -641,7 +646,7 @@ impl Method {
 				.enumerate()
 				.map(|(i, m)| m.expand_extract_parsed(i));
 			quote! {
-				Self::#screaming_name => {
+				#consts_mod_name::#screaming_name => {
 					let parsed = <(#(#arg_type,)*) as ::evm_coder::abi::AbiDecode>::abi_decode(reader)?;
 					return Ok(Some(Self::#pascal_name {
 						#(
@@ -651,7 +656,7 @@ impl Method {
 				}
 			}
 		} else {
-			quote! { Self::#screaming_name => return Ok(Some(Self::#pascal_name)) }
+			quote! { #consts_mod_name::#screaming_name => return Ok(Some(Self::#pascal_name)) }
 		}
 	}
 
@@ -725,6 +730,7 @@ impl Method {
 
 	fn expand_solidity_function(&self) -> proc_macro2::TokenStream {
 		let camel_name = &self.camel_name;
+		let consts_mod_name = &self.consts_mod_name;
 		let mutability = match self.mutability {
 			Mutability::Mutable => quote! {SolidityMutability::Mutable},
 			Mutability::View => quote! { SolidityMutability::View },
@@ -747,7 +753,7 @@ impl Method {
 			SolidityFunction {
 				docs: &[#(#docs),*],
 				hide: #hide,
-				selector: u32::from_be_bytes(Self::#screaming_name.0),
+				selector: u32::from_be_bytes(#consts_mod_name::#screaming_name.0),
 				custom_signature: #custom_signature,
 				name: #camel_name,
 				mutability: #mutability,
@@ -820,7 +826,7 @@ impl SolidityInterface {
 
 		for item in &mut value.items {
 			if let ImplItem::Method(method) = item {
-				methods.push(Method::try_from(method, &info.enum_variant_attrs)?);
+				methods.push(Method::try_from(method, &info)?);
 			}
 		}
 		let mut docs = vec![];
@@ -858,6 +864,7 @@ impl SolidityInterface {
 		let name = self.name;
 
 		let solidity_name = self.info.name.to_string();
+		let call_constants_mod_name = pascal_ident_to_consts_mod(&self.info.name);
 		let call_name = pascal_ident_to_call(&self.info.name);
 		let generics = self.generics;
 		let gen_ref = generics_reference(&generics);
@@ -952,10 +959,15 @@ impl SolidityInterface {
 
 			#expect_selector
 
-			impl #gen_ref #call_name #gen_ref {
+			mod #call_constants_mod_name {
+				use super::*;
+
 				#(
 					#consts
 				)*
+			}
+
+			impl #gen_ref #call_name #gen_ref {
 				/// Return this call ERC165 selector
 				pub const fn interface_id() -> ::evm_coder::types::Bytes4 {
 					let mut interface_id = 0;
