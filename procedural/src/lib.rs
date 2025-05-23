@@ -129,11 +129,18 @@ fn pascal_ident_to_call(ident: &Ident) -> Ident {
 	let name = format!("{ident}Call");
 	Ident::new(&name, ident.span())
 }
+fn pascal_ident_to_consts_mod(ident: &Ident) -> Ident {
+	let name = ident.to_string();
+	let name = cases::snakecase::to_snake_case(&name);
+	let name = format!("{name}_constants");
+	Ident::new(&name, ident.span())
+}
 fn snake_ident_to_pascal(ident: &Ident) -> Ident {
 	let name = ident.to_string();
 	let name = cases::pascalcase::to_pascal_case(&name);
 	Ident::new(&name, ident.span())
 }
+
 fn snake_ident_to_screaming(ident: &Ident) -> Ident {
 	let name = ident.to_string();
 	let name = cases::screamingsnakecase::to_screaming_snake_case(&name);
